@@ -204,3 +204,22 @@ test('optional room voice connects only after opt-in and exposes mute/deafen con
         await gameServer.close();
     }
 });
+
+test('custom fart sound picker rejects non-audio files with a clear message', async () => {
+    const { gameServer, pageUrl } = await startServer();
+    let game;
+    try {
+        game = await openGame(pageUrl);
+        const document = game.dom.window.document;
+        await waitFor(() => document.getElementById('connectionBadge').textContent === 'Connected', 'game connection');
+        const file = new game.dom.window.File(['not audio'], 'sound.txt', { type: 'text/plain' });
+        const input = document.getElementById('customSoundInput');
+        Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+        input.dispatchEvent(new game.dom.window.Event('change'));
+        await waitFor(() => document.getElementById('lobbyStatus').textContent === 'Choose a valid audio file.', 'custom sound validation');
+        assert.equal(document.getElementById('customSoundBtn').textContent, 'ADD SOUND');
+    } finally {
+        game?.dom.window.close();
+        await gameServer.close();
+    }
+});

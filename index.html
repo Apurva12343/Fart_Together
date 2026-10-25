@@ -502,6 +502,31 @@
             margin-bottom: 8px;
         }
 
+        .sound-controls {
+            display: flex;
+            gap: 5px;
+            margin-top: 7px;
+        }
+
+        .sound-file-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            clip-path: inset(50%);
+        }
+
+        .sound-help {
+            max-width: 150px;
+            margin-top: 3px;
+            color: #cbd5e1;
+            font-size: 8px;
+            line-height: 1.25;
+            text-align: center;
+        }
+
         .voice-button {
             min-height: 30px;
             padding: 5px 9px;
@@ -657,6 +682,12 @@
                 <button id="btnFart" class="btn-fart">
                     <span class="fart-label">FART!</span>
                 </button>
+                <div class="sound-controls">
+                    <button id="customSoundBtn" class="voice-button" type="button">ADD SOUND</button>
+                    <button id="removeSoundBtn" class="voice-button" type="button" hidden>RESET</button>
+                </div>
+                <input id="customSoundInput" class="sound-file-input" type="file" accept="audio/*" aria-label="Choose a custom fart sound">
+                <div id="customSoundHelp" class="sound-help">Choose an audio file to replace the fart effect on this device.</div>
                 <div class="kbd-hint">[Spacebar]</div>
                 <div id="controlSectorLabel" class="control-sector-label" aria-live="polite">JOIN A ROOM TO PLAY</div>
             </div>
@@ -669,6 +700,15 @@
             constructor() {
                 this.ctx = null;
                 this.muted = false;
+                this.customFartSoundUrl = null;
+                this.customFartSoundName = '';
+            }
+
+            setCustomFartSound(url, name) {
+                if (this.customFartSoundUrl) URL.revokeObjectURL(this.customFartSoundUrl);
+                this.customFartSoundUrl = url;
+                this.customFartSoundName = name;
+                updateCustomSoundControls();
             }
 
             init() {
@@ -687,6 +727,14 @@
 
             playFart(power = 1.0) {
                 if (this.muted) return;
+                if (this.customFartSoundUrl) {
+                    const sound = new Audio(this.customFartSoundUrl);
+                    sound.volume = Math.max(0, Math.min(1, power));
+                    sound.play().catch(() => {
+                        showToast('CUSTOM SOUND COULD NOT PLAY');
+                    });
+                    return;
+                }
                 this.init();
                 if (!this.ctx) return;
 
@@ -749,6 +797,87 @@
         }
 
         const audio = new FartAudioSynth();
+        const CUSTOM_SOUND_DATABASE = 'fart-together-sounds';
+        const CUSTOM_SOUND_STORE = 'sounds';
+        const MAX_CUSTOM_SOUND_BYTES = 5 * 1024 * 1024;
+
+        function openSoundDatabase() {
+            if (!window.indexedDB) return Promise.reject(new Error('This browser does not support saved custom sounds.'));
+            return new Promise((resolve, reject) => {
+                const request = window.indexedDB.open(CUSTOM_SOUND_DATABASE, 1);
+                request.onupgradeneeded = () => request.result.createObjectStore(CUSTOM_SOUND_STORE);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error || new Error('Could not open custom sound storage.'));
+            });
+        }
+
+        async function saveCustomFartSound(file) {
+            if (!file || !file.type.startsWith('audio/')) {
+                throw new Error('Choose a valid audio file.');
+            }
+            if (file.size > MAX_CUSTOM_SOUND_BYTES) {
+                throw new Error('Custom fart sounds must be 5 MB or smaller.');
+            }
+            const database = await openSoundDatabase();
+            try {
+                await new Promise((resolve, reject) => {
+                    const transaction = database.transaction(CUSTOM_SOUND_STORE, 'readwrite');
+                    transaction.objectStore(CUSTOM_SOUND_STORE).put({ blob: file, name: file.name }, 'customFart');
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = () => reject(transaction.error || new Error('Could not save the custom sound.'));
+                    transaction.onabort = () => reject(transaction.error || new Error('Saving the custom sound was cancelled.'));
+                });
+            } finally {
+                database.close();
+            }
+            audio.setCustomFartSound(URL.createObjectURL(file), file.name);
+        }
+
+        async function loadCustomFartSound() {
+            const database = await openSoundDatabase();
+            try {
+                const record = await new Promise((resolve, reject) => {
+                    const request = database.transaction(CUSTOM_SOUND_STORE, 'readonly')
+                        .objectStore(CUSTOM_SOUND_STORE).get('customFart');
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error || new Error('Could not load the saved custom sound.'));
+                });
+                if (record?.blob instanceof Blob) {
+                    audio.setCustomFartSound(URL.createObjectURL(record.blob), record.name || 'Custom sound');
+                }
+            } finally {
+                database.close();
+            }
+        }
+
+        async function removeCustomFartSound() {
+            const database = await openSoundDatabase();
+            try {
+                await new Promise((resolve, reject) => {
+                    const transaction = database.transaction(CUSTOM_SOUND_STORE, 'readwrite');
+                    transaction.objectStore(CUSTOM_SOUND_STORE).delete('customFart');
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = () => reject(transaction.error || new Error('Could not remove the custom sound.'));
+                    transaction.onabort = () => reject(transaction.error || new Error('Removing the custom sound was cancelled.'));
+                });
+            } finally {
+                database.close();
+            }
+            audio.setCustomFartSound(null, '');
+        }
+
+        function updateCustomSoundControls() {
+            const addButton = document.getElementById('customSoundBtn');
+            const removeButton = document.getElementById('removeSoundBtn');
+            const help = document.getElementById('customSoundHelp');
+            if (!addButton || !removeButton || !help) return;
+            const hasSound = Boolean(audio.customFartSoundUrl);
+            addButton.textContent = hasSound ? 'CHANGE SOUND' : 'ADD SOUND';
+            removeButton.hidden = !hasSound;
+            help.textContent = hasSound
+                ? `Using ${audio.customFartSoundName} on this device.`
+                : 'Choose an audio file to replace the fart effect on this device.';
+        }
 
         // --- Canvas Setup ---
         const canvas = document.getElementById('gameCanvas');
@@ -826,22 +955,51 @@
             return canvas.width * 0.65;
         }
 
+        function getRiverCenterAtWorldY(worldY) {
+            const progress = distanceMeters - worldY;
+            const center = 34 * Math.sin(progress * 0.0045) +
+                12 * Math.sin(progress * 0.008 + 1.1) -
+                12 * Math.sin(1.1);
+            return center * (canvas.width / 440);
+        }
+
         function initRipples() {
             waterRipples = [];
             for (let i = 0; i < 18; i++) {
+                const y = Math.random() * canvas.height;
                 waterRipples.push({
-                    x: (Math.random() - 0.5) * getRiverWidth(),
-                    y: Math.random() * canvas.height,
+                    x: getRiverCenterAtWorldY((y - canvas.height / 2) / (canvas.height / 920)) +
+                        (Math.random() - 0.5) * getRiverWidth(),
+                    y,
                     radius: 5 + Math.random() * 12,
                     speed: 0.8 + Math.random() * 0.8
                 });
             }
         }
 
+        function moveWaterRipples() {
+            const scaleY = canvas.height / 920;
+            const riverW = getRiverWidth();
+            waterRipples.forEach(ripple => {
+                const previousY = ripple.y;
+                ripple.y += currentSpeed * ripple.speed;
+                ripple.x += getRiverCenterAtWorldY((ripple.y - canvas.height / 2) / scaleY) -
+                    getRiverCenterAtWorldY((previousY - canvas.height / 2) / scaleY);
+                if (ripple.y > canvas.height) {
+                    ripple.y = -20;
+                    ripple.x = getRiverCenterAtWorldY((-20 - canvas.height / 2) / scaleY) +
+                        (Math.random() - 0.5) * riverW;
+                }
+            });
+        }
+
         function spawnObstacleWall() {
             const riverW = getRiverWidth();
-            const minX = -riverW / 2 + 25;
-            const maxX = riverW / 2 - 25;
+            const wallY = -320;
+            const scaleY = canvas.height / 920;
+            const riverCenter = getRiverCenterAtWorldY(wallY / scaleY);
+            const minX = riverCenter - riverW / 2 + 25;
+            const maxX = riverCenter + riverW / 2 - 25;
             const gapWidth = raft.radius * 2.8;
 
             const gapCenter = minX + gapWidth / 2 + Math.random() * (maxX - minX - gapWidth);
@@ -849,8 +1007,6 @@
 
             const leftSegmentWidth = Math.max(0, gapCenter - (gapWidth / 2) - minX);
             const rightSegmentWidth = Math.max(0, maxX - (gapCenter + gapWidth / 2));
-
-            const wallY = -320;
 
             riverWalls.push({
                 y: wallY,
@@ -1026,17 +1182,22 @@
             // Position Player 1 (You) along the raft based on 90° Pie Arc
             crew[0].angle = (Math.PI / 4) + (pieState.normalizedVal * (Math.PI / 2));
 
-            // Damping & Position Update
+            const scaleY = canvas.height / 920;
+            const riverCenter = getRiverCenterAtWorldY(raft.y / scaleY);
+            raft.vx += (riverCenter - raft.x) * 0.0007;
+            raft.vy += (0.035 - raft.y / scaleY * 0.001);
             raft.vx *= 0.88;
             raft.vy *= 0.88;
 
             raft.x += raft.vx;
             raft.y += raft.vy;
+            raft.rotation += (raft.vx * 0.012 - raft.rotation) * 0.12;
 
             // Bank Boundaries & Spike Collisions
             const riverW = getRiverWidth();
             const maxBorder = (riverW / 2) - raft.radius - 18;
-            if (Math.abs(raft.x) > maxBorder) {
+            const currentRiverCenter = getRiverCenterAtWorldY(raft.y / scaleY);
+            if (raft.x < currentRiverCenter - maxBorder || raft.x > currentRiverCenter + maxBorder) {
                 audio.playCrash();
                 gameOver();
             }
@@ -1069,14 +1230,7 @@
                 }
             });
 
-            // Water Ripples
-            waterRipples.forEach(w => {
-                w.y += currentSpeed * w.speed;
-                if (w.y > canvas.height) {
-                    w.y = -20;
-                    w.x = (Math.random() - 0.5) * riverW;
-                }
-            });
+            moveWaterRipples();
 
             // Gas Particles
             for (let i = gasParticles.length - 1; i >= 0; i--) {
@@ -1097,6 +1251,13 @@
             for (let i = riverWalls.length - 1; i >= 0; i--) {
                 const wall = riverWalls[i];
                 wall.y += currentSpeed;
+                const wallRiverCenter = getRiverCenterAtWorldY(wall.y / scaleY);
+                const minX = wallRiverCenter - riverW / 2 + 25;
+                const maxX = wallRiverCenter + riverW / 2 - 25;
+                const leftWidth = Math.max(0, wall.gapCenter - wall.gapWidth / 2 - minX);
+                const rightWidth = Math.max(0, maxX - wall.gapCenter - wall.gapWidth / 2);
+                wall.leftSeg = { x: minX + leftWidth / 2, w: leftWidth };
+                wall.rightSeg = { x: wall.gapCenter + wall.gapWidth / 2 + rightWidth / 2, w: rightWidth };
 
                 if (Math.abs(raft.y - wall.y) < raft.radius + (wall.height / 2)) {
                     const gapLeft = wall.gapCenter - (wall.gapWidth / 2) + raft.radius * 0.6;
@@ -1136,14 +1297,10 @@
             pieState.angle = localSectorStart + pieState.normalizedVal * localSectorSize;
             sendSteering();
 
-            const riverW = getRiverWidth();
-            waterRipples.forEach(ripple => {
-                ripple.y += currentSpeed * ripple.speed;
-                if (ripple.y > canvas.height) {
-                    ripple.y = -20;
-                    ripple.x = (Math.random() - 0.5) * riverW;
-                }
-            });
+            const scaleX = canvas.width / 440;
+            const scaleY = canvas.height / 920;
+            moveWaterRipples();
+            raft.rotation += (raft.vx * 0.012 - raft.rotation) * 0.12;
             for (let i = gasParticles.length - 1; i >= 0; i -= 1) {
                 const particle = gasParticles[i];
                 particle.x += particle.vx;
@@ -1170,13 +1327,15 @@
             raft.vx = state.raft.vx * scaleX;
             raft.vy = state.raft.vy * scaleY;
             raft.radius = 40 * scaleX;
+            raft.rotation += (raft.vx * 0.012 - raft.rotation) * 0.12;
 
             const riverW = getRiverWidth();
-            const minX = -riverW / 2 + 25;
-            const maxX = riverW / 2 - 25;
             riverWalls = state.walls.map(wall => {
                 const gapCenter = wall.gapCenter * scaleX;
                 const gapWidth = wall.gapWidth * scaleX;
+                const wallRiverCenter = getRiverCenterAtWorldY(wall.y);
+                const minX = wallRiverCenter - riverW / 2 + 25;
+                const maxX = wallRiverCenter + riverW / 2 - 25;
                 const leftWidth = Math.max(0, gapCenter - gapWidth / 2 - minX);
                 const rightWidth = Math.max(0, maxX - gapCenter - gapWidth / 2);
                 return {
@@ -1394,23 +1553,62 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const riverW = getRiverWidth();
-            const bankW = (canvas.width - riverW) / 2;
-
-            // Dirt Side Banks
+            const scaleY = canvas.height / 920;
+            const halfRiver = riverW / 2;
+            const riverStep = 24;
             ctx.fillStyle = '#ea580c';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Grass Border Lines
-            ctx.fillStyle = '#65a30d';
-            ctx.fillRect(bankW - 16, 0, 16, canvas.height);
-            ctx.fillRect(canvas.width - bankW, 0, 16, canvas.height);
-
-            // Main Blue River
-            ctx.fillStyle = '#0284c7';
-            ctx.fillRect(bankW, 0, riverW, canvas.height);
-
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
+
+            ctx.fillStyle = '#65a30d';
+            for (const side of [-1, 1]) {
+                ctx.beginPath();
+                for (let y = -canvas.height / 2; y <= canvas.height / 2; y += riverStep) {
+                    const center = getRiverCenterAtWorldY(y / scaleY);
+                    const edge = center + side * halfRiver;
+                    if (y === -canvas.height / 2) ctx.moveTo(edge, y);
+                    else ctx.lineTo(edge, y);
+                }
+                for (let y = canvas.height / 2; y >= -canvas.height / 2; y -= riverStep) {
+                    const center = getRiverCenterAtWorldY(y / scaleY);
+                    ctx.lineTo(center + side * (halfRiver + 16), y);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            ctx.fillStyle = '#0284c7';
+            ctx.beginPath();
+            for (let y = -canvas.height / 2; y <= canvas.height / 2; y += riverStep) {
+                const center = getRiverCenterAtWorldY(y / scaleY);
+                if (y === -canvas.height / 2) ctx.moveTo(center - halfRiver, y);
+                else ctx.lineTo(center - halfRiver, y);
+            }
+            for (let y = canvas.height / 2; y >= -canvas.height / 2; y -= riverStep) {
+                ctx.lineTo(getRiverCenterAtWorldY(y / scaleY) + halfRiver, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // Curved bank bumpers follow the channel instead of forming straight rails.
+            ctx.fillStyle = '#a855f7';
+            for (const side of [-1, 1]) {
+                ctx.beginPath();
+                for (let y = -canvas.height / 2; y <= canvas.height / 2; y += riverStep) {
+                    const center = getRiverCenterAtWorldY(y / scaleY);
+                    const edge = center + side * halfRiver;
+                    if (y === -canvas.height / 2) ctx.moveTo(edge, y);
+                    else ctx.lineTo(edge, y);
+                }
+                for (let y = canvas.height / 2; y >= -canvas.height / 2; y -= riverStep) {
+                    const center = getRiverCenterAtWorldY(y / scaleY);
+                    ctx.lineTo(center + side * (halfRiver - 20), y);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
 
             // Water Ripples
             ctx.strokeStyle = 'rgba(224, 242, 254, 0.35)';
@@ -1421,24 +1619,20 @@
                 ctx.stroke();
             });
 
-            // Purple Spike Walls
             const spikeSpacing = 24;
-            ctx.fillStyle = '#a855f7';
-            ctx.fillRect(-riverW/2, -canvas.height/2, 20, canvas.height);
-            ctx.fillRect(riverW/2 - 20, -canvas.height/2, 20, canvas.height);
-
             ctx.fillStyle = '#ffffff';
-            for (let y = -canvas.height/2 - riverScrollOffset; y < canvas.height/2 + spikeSpacing; y += spikeSpacing) {
+            for (let y = -canvas.height / 2 - riverScrollOffset; y < canvas.height / 2 + spikeSpacing; y += spikeSpacing) {
+                const center = getRiverCenterAtWorldY(y / scaleY);
                 ctx.beginPath();
-                ctx.moveTo(-riverW/2 + 20, y);
-                ctx.lineTo(-riverW/2 + 32, y + 8);
-                ctx.lineTo(-riverW/2 + 20, y + 16);
+                ctx.moveTo(center - halfRiver + 20, y);
+                ctx.lineTo(center - halfRiver + 32, y + 8);
+                ctx.lineTo(center - halfRiver + 20, y + 16);
                 ctx.fill();
 
                 ctx.beginPath();
-                ctx.moveTo(riverW/2 - 20, y);
-                ctx.lineTo(riverW/2 - 32, y + 8);
-                ctx.lineTo(riverW/2 - 20, y + 16);
+                ctx.moveTo(center + halfRiver - 20, y);
+                ctx.lineTo(center + halfRiver - 32, y + 8);
+                ctx.lineTo(center + halfRiver - 20, y + 16);
                 ctx.fill();
             }
 
@@ -1485,7 +1679,10 @@
                     if (wall.rightSeg.w > 0) ctx.fillRect(wall.rightSeg.x - wall.rightSeg.w / 2, -wall.height / 2, wall.rightSeg.w, wall.height);
 
                     ctx.fillStyle = '#ffffff';
-                    for (let x = -riverW/2 + 25; x < riverW/2 - 25; x += 18) {
+                    const wallCenter = getRiverCenterAtWorldY(wall.y / scaleY);
+                    const wallMinX = wallCenter - riverW / 2 + 25;
+                    const wallMaxX = wallCenter + riverW / 2 - 25;
+                    for (let x = wallMinX; x < wallMaxX; x += 18) {
                         if (x < wall.gapCenter - wall.gapWidth / 2 || x > wall.gapCenter + wall.gapWidth / 2) {
                             ctx.beginPath();
                             ctx.moveTo(x - 6, -wall.height / 2);
@@ -1521,6 +1718,7 @@
             // Raft & Seated Characters
             ctx.save();
             ctx.translate(raft.x, raft.y);
+            ctx.rotate(raft.rotation);
 
             // Raft Outer Rim
             ctx.fillStyle = '#f97316';
@@ -1574,14 +1772,32 @@
             miniCtx.fillStyle = '#020617';
             miniCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
 
+            const mapRiverHalf = getRiverWidth() * scaleX / 2;
+            const mapStep = 3;
             miniCtx.fillStyle = '#0284c7';
-            miniCtx.fillRect(minimapCanvas.width * 0.18, 0, minimapCanvas.width * 0.64, minimapCanvas.height);
+            miniCtx.beginPath();
+            for (let y = 0; y <= minimapCanvas.height; y += mapStep) {
+                const worldY = (y / scaleY - canvas.height / 2) / (canvas.height / 920);
+                const center = minimapCanvas.width / 2 + getRiverCenterAtWorldY(worldY) * scaleX;
+                if (y === 0) miniCtx.moveTo(center - mapRiverHalf, y);
+                else miniCtx.lineTo(center - mapRiverHalf, y);
+            }
+            for (let y = minimapCanvas.height; y >= 0; y -= mapStep) {
+                const worldY = (y / scaleY - canvas.height / 2) / (canvas.height / 920);
+                const center = minimapCanvas.width / 2 + getRiverCenterAtWorldY(worldY) * scaleX;
+                miniCtx.lineTo(center + mapRiverHalf, y);
+            }
+            miniCtx.closePath();
+            miniCtx.fill();
 
             riverWalls.forEach(wall => {
                 const my = (wall.y + canvas.height / 2) * scaleY;
                 if (my >= 0 && my <= minimapCanvas.height) {
+                    const wallCenter = minimapCanvas.width / 2 +
+                        getRiverCenterAtWorldY(wall.y / (canvas.height / 920)) * scaleX;
+                    const wallLeft = wallCenter - mapRiverHalf;
                     miniCtx.fillStyle = '#f43f5e';
-                    miniCtx.fillRect(minimapCanvas.width * 0.18, my - 1.5, minimapCanvas.width * 0.64, 3);
+                    miniCtx.fillRect(wallLeft, my - 1.5, mapRiverHalf * 2, 3);
 
                     const gx = (wall.gapCenter + canvas.width / 2) * scaleX;
                     const gw = wall.gapWidth * scaleX;
@@ -1613,6 +1829,7 @@
             raft.y = 0;
             raft.vx = 0;
             raft.vy = 0;
+            raft.rotation = 0;
             distanceMeters = 0;
             crew[0].gas = 100;
 
@@ -2249,6 +2466,31 @@
             document.getElementById('voiceToggleBtn').addEventListener('click', toggleVoice);
             document.getElementById('micMuteBtn').addEventListener('click', toggleMicrophone);
             document.getElementById('deafenToggleBtn').addEventListener('click', toggleDeafen);
+            document.getElementById('customSoundBtn').addEventListener('click', () => {
+                document.getElementById('customSoundInput').click();
+            });
+            document.getElementById('customSoundInput').addEventListener('change', async event => {
+                const [file] = event.target.files || [];
+                if (!file) return;
+                try {
+                    await saveCustomFartSound(file);
+                    showToast('CUSTOM FART SOUND SAVED!');
+                } catch (error) {
+                    setLobbyStatus(error.message);
+                    showToast(error.message);
+                } finally {
+                    event.target.value = '';
+                }
+            });
+            document.getElementById('removeSoundBtn').addEventListener('click', async () => {
+                try {
+                    await removeCustomFartSound();
+                    showToast('DEFAULT FART SOUND RESTORED!');
+                } catch (error) {
+                    setLobbyStatus(error.message);
+                    showToast(error.message);
+                }
+            });
         }
 
         function gameLoop() {
@@ -2263,6 +2505,10 @@
             setupControls();
             const savedName = readStoredValue('ft-player-name');
             if (savedName) document.getElementById('playerNameInput').value = savedName;
+            updateCustomSoundControls();
+            loadCustomFartSound().catch(error => {
+                setLobbyStatus(error.message);
+            });
             gameLoop();
             connectToServer();
         };

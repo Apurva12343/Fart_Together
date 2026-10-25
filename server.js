@@ -19,6 +19,13 @@ const TICK_MS = 50;
 const RECONNECT_MS = 30_000;
 const PLAYER_COLORS = ['#ffffff', '#f59e0b', '#f472b6', '#f8fafc'];
 
+function getRiverCenterAt(y, distance) {
+    const progress = distance - y;
+    return 34 * Math.sin(progress * 0.0045) +
+        12 * Math.sin(progress * 0.008 + 1.1) -
+        12 * Math.sin(1.1);
+}
+
 function cleanPlayerName(value) {
     if (typeof value !== 'string') return null;
     const name = value.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 16);
@@ -225,23 +232,24 @@ function createGameServer(options = {}) {
     }
 
     function spawnWall(room) {
-        const minX = -RIVER_WIDTH / 2 + 25;
-        const maxX = RIVER_WIDTH / 2 - 25;
+        const wallY = -320;
+        const centerX = getRiverCenterAt(wallY, room.distance);
+        const minX = centerX - RIVER_WIDTH / 2 + 25;
+        const maxX = centerX + RIVER_WIDTH / 2 - 25;
         const gapWidth = RAFT_RADIUS * 2.8;
         const centerMin = minX + gapWidth / 2;
         const centerMax = maxX - gapWidth / 2;
         const gapCenter = centerMin + Math.random() * (centerMax - centerMin);
-        const y = -320;
         room.walls.push({
             id: room.nextWallId++,
-            y,
+            y: wallY,
             height: 28,
             gapCenter,
             gapWidth,
             isGate: Math.random() > 0.5
         });
         if (Math.random() < 0.65) {
-            room.beans.push({ x: gapCenter, y: y - 60, radius: 12 });
+            room.beans.push({ x: gapCenter, y: wallY - 60, radius: 12 });
         }
     }
 
@@ -262,13 +270,17 @@ function createGameServer(options = {}) {
             if (player.connected) player.gas = Math.min(100, player.gas + 0.25 * frameScale);
         }
 
+        const raftCenterX = getRiverCenterAt(room.raft.y, room.distance);
+        room.raft.vx += (raftCenterX - room.raft.x) * 0.0007 * frameScale;
+        room.raft.vy += (0.035 - room.raft.y * 0.001) * frameScale;
         room.raft.vx *= Math.pow(0.88, frameScale);
         room.raft.vy *= Math.pow(0.88, frameScale);
         room.raft.x += room.raft.vx * frameScale;
         room.raft.y += room.raft.vy * frameScale;
 
+        const riverCenterX = getRiverCenterAt(room.raft.y, room.distance);
         const maxBorder = RIVER_WIDTH / 2 - RAFT_RADIUS - 18;
-        if (Math.abs(room.raft.x) > maxBorder) {
+        if (room.raft.x < riverCenterX - maxBorder || room.raft.x > riverCenterX + maxBorder) {
             finishGame(room, 'The raft hit the riverbank.');
             return;
         }
@@ -667,4 +679,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { createGameServer };
+module.exports = { createGameServer, getRiverCenterAt };

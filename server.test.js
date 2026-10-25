@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { once } = require('node:events');
 const test = require('node:test');
 const { WebSocket } = require('ws');
-const { createGameServer } = require('./server');
+const { createGameServer, getRiverCenterAt } = require('./server');
 
 async function startServer(options = {}) {
     const gameServer = createGameServer({ host: '127.0.0.1', port: 0, ...options });
@@ -59,6 +59,13 @@ test('serves index.html and game config and permits only configured cross-origin
     } finally {
         await gameServer.close();
     }
+});
+
+test('river centerline curves while remaining centered at the start', () => {
+    assert.equal(getRiverCenterAt(0, 0), 0);
+    assert.ok(Math.abs(getRiverCenterAt(-800, 0)) > 10);
+    assert.ok(Math.abs(getRiverCenterAt(800, 0)) > 10);
+    assert.notEqual(getRiverCenterAt(-800, 0), getRiverCenterAt(800, 0));
 });
 
 test('room codes join a shared authoritative game and only the host can start', async () => {
