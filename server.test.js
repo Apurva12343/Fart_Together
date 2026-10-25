@@ -138,6 +138,36 @@ test('room codes join a shared authoritative game and only the host can start', 
     }
 });
 
+test('raft stays still without fart input and moves from a fart impulse', async () => {
+    const { gameServer, url } = await startServer();
+    try {
+        const host = await connect(url, 'StillHost');
+        const createdRoom = waitForMessage(host.socket, message => message.type === 'roomJoined');
+        host.socket.send(JSON.stringify({ type: 'createRoom' }));
+        const room = await createdRoom;
+
+        const guest = await connect(url, 'FartGuest');
+        const joinedRoom = waitForMessage(guest.socket, message => message.type === 'roomJoined');
+        guest.socket.send(JSON.stringify({ type: 'joinRoom', code: room.state.code }));
+        await joinedRoom;
+
+        const started = waitForMessage(host.socket, message => message.type === 'gameStarted');
+        host.socket.send(JSON.stringify({ type: 'startGame' }));
+        await started;
+
+        const gameRoom = gameServer.rooms.get(room.state.code);
+        const initialPosition = { x: gameRoom.raft.x, y: gameRoom.raft.y };
+        await new Promise(resolve => setTimeout(resolve, 200));
+        assert.deepEqual({ x: gameRoom.raft.x, y: gameRoom.raft.y }, initialPosition);
+
+        host.socket.send(JSON.stringify({ type: 'fart' }));
+        await new Promise(resolve => setTimeout(resolve, 100));
+        assert.notDeepEqual({ x: gameRoom.raft.x, y: gameRoom.raft.y }, initialPosition);
+    } finally {
+        await gameServer.close();
+    }
+});
+
 test('quick match starts when a second player joins and guest reconnect restores their seat', async () => {
     const { gameServer, url } = await startServer();
     try {

@@ -51,7 +51,7 @@ Run the server checks with `npm test`. To check the Netlify build locally, run `
 - Room codes, quick matchmaking, shareable room links, host restart, and a 30-second reconnect window are supported.
 - Optional room voice is off until a player joins it and grants microphone permission. Mic mute and deafen controls are available. Voice uses peer-to-peer WebRTC; each player should only join voice with people they trust.
 - Players can choose a custom fart audio file up to 5 MB. The sound is saved locally in that browser and only replaces fart audio for that player's device; the sound file is not uploaded to the server or shared with other players.
-- The river bends with flowing water/current. Raft movement now has momentum, a gentle current pull, buoyancy/gravity, and a small lean while drifting.
+- The river bends with flowing water, but its current is visual only and does not push the raft. Fart bursts propel the raft in the aimed direction; water-like drag slows it afterward, while a small visual bob and lean keep it feeling afloat.
 - Display names are stored in the browser; reconnect tokens are kept in per-tab session storage so invite links can open separately. Reconnect tokens grant access to their room, so do not share them.
 - Room state and guest identities are in memory. Restarting the server clears rooms; durable accounts, friends, moderation, and progression are not implemented yet.
 - This build is 2D. The 3D upgrade is a future milestone.

@@ -1054,8 +1054,7 @@
             }
 
             if (isUser && !onlineMode) {
-                // Boost in the direction opposite to Player 1's outward bum angle
-                const boostAngle = character.angle + Math.PI;
+                const boostAngle = fartAngle + Math.PI;
                 raft.vx += Math.cos(boostAngle) * 2.8;
                 raft.vy += Math.sin(boostAngle) * 2.8;
                 showToast("FART BOOST!");
@@ -1183,9 +1182,6 @@
             crew[0].angle = (Math.PI / 4) + (pieState.normalizedVal * (Math.PI / 2));
 
             const scaleY = canvas.height / 920;
-            const riverCenter = getRiverCenterAtWorldY(raft.y / scaleY);
-            raft.vx += (riverCenter - raft.x) * 0.0007;
-            raft.vy += (0.035 - raft.y / scaleY * 0.001);
             raft.vx *= 0.88;
             raft.vy *= 0.88;
 
@@ -1717,7 +1713,8 @@
 
             // Raft & Seated Characters
             ctx.save();
-            ctx.translate(raft.x, raft.y);
+            const raftBob = Math.sin(riverScrollOffset * Math.PI / 18) * 2;
+            ctx.translate(raft.x, raft.y + raftBob);
             ctx.rotate(raft.rotation);
 
             // Raft Outer Rim
@@ -1858,7 +1855,7 @@
                 sendNetworkMessage({ type: 'fart' });
             } else if (crew[0].gas >= 20) {
                 crew[0].gas -= 20;
-                triggerFart(crew[0], 1.0, true);
+                triggerFart(crew[0], 1.0, true, pieState.angle);
             } else {
                 showToast("OUT OF GAS!");
             }

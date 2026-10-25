@@ -270,9 +270,6 @@ function createGameServer(options = {}) {
             if (player.connected) player.gas = Math.min(100, player.gas + 0.25 * frameScale);
         }
 
-        const raftCenterX = getRiverCenterAt(room.raft.y, room.distance);
-        room.raft.vx += (raftCenterX - room.raft.x) * 0.0007 * frameScale;
-        room.raft.vy += (0.035 - room.raft.y * 0.001) * frameScale;
         room.raft.vx *= Math.pow(0.88, frameScale);
         room.raft.vy *= Math.pow(0.88, frameScale);
         room.raft.x += room.raft.vx * frameScale;
