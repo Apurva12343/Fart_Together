@@ -9,12 +9,18 @@ Netlify hosts the static game page; it does **not** run this game's persistent W
 1. Push this project to a GitHub repository.
 2. In Netlify, import the repository as a new site. `netlify.toml` configures the build and publishes the generated `dist` folder. The source page is already named `index.html`.
 3. Deploy the site once and copy its Netlify URL, for example `https://your-game.netlify.app`.
-4. In Render, create a Blueprint from the same repository using `render.yaml`. Set `ALLOWED_ORIGINS` to the exact Netlify site origin, including `https://` and no path. Deploy the service and copy its public URL, for example `https://fart-together-server.onrender.com`.
+4. In Render, create a Blueprint from the same repository using `render.yaml`. The Blueprint requests Render's **Free** web-service plan. Set `ALLOWED_ORIGINS` to the exact Netlify site origin, including `https://` and no path. Deploy the service and copy its public URL, for example `https://fart-together-server.onrender.com`.
 5. In Netlify, open **Site configuration → Environment variables** and add `GAME_SERVER_URL` with the Render origin (for example `https://fart-together-server.onrender.com`).
 6. Redeploy the Netlify site so its build writes the game-server URL into `game-config.js`.
 7. Open the Netlify URL in two or more tabs/devices. Create a room, share the code/link, and have the host start once at least two players are connected.
 
 If the Render service's access policy was set before you knew the Netlify URL, update `ALLOWED_ORIGINS` in Render after step 3 and redeploy/restart the service. The allowed origin and `GAME_SERVER_URL` must match the real site/server URLs exactly. Keep the backend URL on `https://`; the browser automatically uses secure `wss://` for multiplayer.
+
+Render's free service sleeps after 15 minutes with no traffic, so the first connection after it sleeps can take about a minute. Free services also have monthly usage limits, and in-memory rooms are lost when the service restarts or sleeps. If Render still offers only paid plans in your account or region, do not confirm the paid option; use the alternative below.
+
+### If Render Free isn't available
+
+The Netlify website can stay as-is, but the Node.js WebSocket server must run on another host. An always-on option that may be available at no cost is an Oracle Cloud Always Free virtual machine; it requires setting up Linux, Node.js, HTTPS, and a reverse proxy. You can also test from your own computer with `npm start`, but your friend can connect only while your computer is on and reachable from the internet. Netlify static hosting alone cannot host multiplayer sessions.
 
 For a manual Netlify drag-and-drop deploy, do not upload just `index.html`: the game also needs `game-config.js`. After deploying the backend and setting `ALLOWED_ORIGINS`, build the site locally with your Render URL:
 

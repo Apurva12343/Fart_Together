@@ -2,6 +2,7 @@ services:
   - type: web
     name: fart-together-server
     runtime: node
+    plan: free
     buildCommand: npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /healthz
