@@ -1,0 +1,2271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fart Together</title>
+    <script src="/game-config.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: #020617;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Container Layout */
+        .game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 440px;
+            max-height: 920px;
+            background-color: #0284c7;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+
+        @media (min-width: 640px) {
+            .game-container {
+                border-radius: 24px;
+                border: 4px solid #1e293b;
+                height: 95vh;
+            }
+        }
+
+        canvas#gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* UI Panels */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .arcade-header {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .arcade-title {
+            color: #fde047;
+            font-size: 20px;
+            font-weight: 900;
+            font-style: italic;
+            text-shadow: 0 3px 0 #b45309, 0 6px 10px rgba(0,0,0,0.8);
+            letter-spacing: 1px;
+            line-height: 1;
+        }
+
+        .arcade-subtitle {
+            font-size: 9px;
+            font-weight: 900;
+            color: #a3e635;
+            background: rgba(2, 6, 23, 0.85);
+            padding: 2px 8px;
+            border-radius: 9999px;
+            border: 1px solid rgba(163, 230, 53, 0.5);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-top: 3px;
+        }
+
+        /* Top Overlay */
+        .top-ui {
+            position: relative;
+            z-index: 10;
+            padding: 12px;
+            margin-top: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .player-list {
+            padding: 10px;
+            width: 160px;
+            pointer-events: auto;
+            color: #f8fafc;
+        }
+
+        .panel-header {
+            font-size: 10px;
+            font-weight: 900;
+            color: #34d399;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+
+        .player-row {
+            margin-bottom: 5px;
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .bar-bg {
+            width: 100%;
+            height: 6px;
+            background-color: #0f172a;
+            border-radius: 9999px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.1s linear;
+        }
+
+        .minimap-container {
+            padding: 6px;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .minimap-title {
+            font-size: 9px;
+            font-weight: 900;
+            color: #cbd5e1;
+            margin-bottom: 4px;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 2px;
+        }
+
+        .minimap-box {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            background: rgba(2, 6, 23, 0.95);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+
+        canvas#minimapCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Bottom Controls Overlay */
+        .bottom-ui {
+            position: relative;
+            z-index: 10;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none;
+        }
+
+        /* 90-Degree Quarter Pie Control Wrapper */
+        .pie-control-wrapper {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas#pieCanvas {
+            width: 130px;
+            height: 130px;
+            cursor: pointer;
+            border-radius: 16px;
+            touch-action: none;
+        }
+
+        /* Fart Button Controls */
+        .fart-container {
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .btn-fart {
+            width: 86px;
+            height: 86px;
+            border-radius: 9999px;
+            background: radial-gradient(circle at 35% 35%, #a3e635, #4d7c0f);
+            border: 3px solid #bef264;
+            box-shadow: 0 0 20px rgba(163, 230, 53, 0.6), inset 0 3px 6px rgba(255,255,255,0.6), 0 6px 0 #274005;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #0f172a;
+            font-weight: 900;
+            outline: none;
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
+            -webkit-tap-highlight-color: transparent;
+            animation: fart-glow 1.5s infinite alternate;
+        }
+
+        @keyframes fart-glow {
+            0% { box-shadow: 0 0 15px rgba(163, 230, 53, 0.5), inset 0 3px 6px rgba(255,255,255,0.6), 0 6px 0 #274005; }
+            100% { box-shadow: 0 0 28px rgba(163, 230, 53, 0.9), inset 0 3px 6px rgba(255,255,255,0.8), 0 6px 0 #274005; }
+        }
+
+        .btn-fart:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 10px rgba(163, 230, 53, 0.4), inset 0 2px 4px rgba(0,0,0,0.6), 0 2px 0 #274005;
+        }
+
+        .fart-label {
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+
+        .kbd-hint {
+            font-size: 9px;
+            font-weight: 800;
+            color: #a3e635;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: absolute;
+            top: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            pointer-events: none;
+            background: #a3e635;
+            color: #020617;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border: 2px solid #ecfccb;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Game Over Modal */
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 30;
+            background: rgba(2, 6, 23, 0.92);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            color: #f8fafc;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 9999px;
+            background: rgba(244, 63, 94, 0.2);
+            border: 2px solid #f43f5e;
+            color: #fb7185;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .modal-text {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 24px;
+        }
+
+        .restart-btn {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #a3e635, #10b981);
+            color: #020617;
+            font-size: 13px;
+            font-weight: 900;
+            border-radius: 9999px;
+            border: 1px solid #ecfccb;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 10px 20px rgba(163, 230, 53, 0.3);
+            outline: none;
+        }
+
+        .restart-btn:active {
+            transform: scale(0.96);
+        }
+
+        .lobby-overlay {
+            z-index: 40;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .lobby-card {
+            width: min(100%, 360px);
+            padding: 24px;
+            border-radius: 24px;
+            background: rgba(15, 23, 42, 0.96);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+        }
+
+        .lobby-card h2 {
+            color: #fde047;
+            font-size: 25px;
+            font-weight: 950;
+            margin-bottom: 8px;
+        }
+
+        .lobby-copy {
+            color: #cbd5e1;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 18px;
+        }
+
+        .lobby-label {
+            display: block;
+            color: #a3e635;
+            font-size: 11px;
+            font-weight: 900;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 12px 0 5px;
+        }
+
+        .lobby-input {
+            width: 100%;
+            min-height: 44px;
+            padding: 10px 12px;
+            border: 1px solid #475569;
+            border-radius: 10px;
+            background: #020617;
+            color: #f8fafc;
+            font: inherit;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        .lobby-buttons {
+            display: grid;
+            gap: 9px;
+            margin-top: 14px;
+        }
+
+        .lobby-button {
+            min-height: 44px;
+            padding: 10px 14px;
+            border: 1px solid #bef264;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #a3e635, #10b981);
+            color: #020617;
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 0.4px;
+            cursor: pointer;
+        }
+
+        .lobby-button.secondary {
+            background: #1e293b;
+            border-color: #475569;
+            color: #f8fafc;
+        }
+
+        .lobby-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .lobby-status {
+            min-height: 20px;
+            margin-top: 12px;
+            color: #fbbf24;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .room-code {
+            margin: 12px 0;
+            padding: 10px;
+            border: 1px dashed #a3e635;
+            border-radius: 12px;
+            color: #bef264;
+            font-size: 28px;
+            font-weight: 950;
+            letter-spacing: 6px;
+        }
+
+        .connection-badge {
+            position: absolute;
+            top: 78px;
+            left: 50%;
+            z-index: 12;
+            transform: translateX(-50%);
+            max-width: calc(100% - 24px);
+            padding: 5px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 9999px;
+            background: rgba(15, 23, 42, 0.85);
+            color: #cbd5e1;
+            font-size: 10px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .player-list {
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .player-row.disconnected {
+            opacity: 0.5;
+        }
+
+        .voice-controls {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+
+        .voice-button {
+            min-height: 30px;
+            padding: 5px 9px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            border-radius: 9999px;
+            background: rgba(15, 23, 42, 0.92);
+            color: #f8fafc;
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .voice-button.active {
+            border-color: #bef264;
+            color: #bef264;
+        }
+
+        .voice-button:disabled {
+            opacity: 0.45;
+        }
+
+        .remote-audio {
+            display: none;
+        }
+
+        .control-sector-label {
+            margin-top: 2px;
+            color: #e2e8f0;
+            font-size: 9px;
+            font-weight: 900;
+            text-align: center;
+            text-shadow: 0 1px 3px #020617;
+        }
+
+        .player-row .player-info span:first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        @media (max-height: 650px) {
+            .lobby-overlay {
+                justify-content: flex-start;
+            }
+
+            .lobby-card {
+                margin: auto 0;
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <!-- Main River Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Top Arcade Title -->
+        <div class="arcade-header">
+            <h1 class="arcade-title">FART TOGETHER</h1>
+            <div class="arcade-subtitle">CO-OP RIVER RUN</div>
+        </div>
+
+        <!-- Top Controls Overlay -->
+        <div class="top-ui">
+            <!-- Player Stats Panel -->
+            <div class="glass-panel player-list">
+                <div class="panel-header">
+                    <span>PLAYERS</span>
+                    <span id="scoreText" style="color: #fde047;">0m</span>
+                </div>
+
+                <div id="playerRows"></div>
+            </div>
+
+            <!-- Mini Map Panel -->
+            <div class="glass-panel minimap-container">
+                <div class="minimap-title">
+                    <span>TRACK MAP</span>
+                    <span id="soundToggle" style="cursor: pointer;">🔊</span>
+                </div>
+                <div class="minimap-box">
+                    <canvas id="minimapCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="connectionBadge" class="connection-badge" aria-live="polite">Connecting...</div>
+
+        <!-- Toast Floating Notification -->
+        <div id="toast" class="toast">FART BOOST!</div>
+
+        <div id="lobbyModal" class="modal-overlay lobby-overlay">
+            <div class="lobby-card">
+                <h2>FART TOGETHER</h2>
+                <p class="lobby-copy">Team up on one raft. Steer through the gates and time your boosts together!</p>
+
+                <section id="homeSection" class="lobby-section">
+                    <label class="lobby-label" for="playerNameInput">Your name</label>
+                    <input id="playerNameInput" class="lobby-input" maxlength="16" autocomplete="nickname" value="RiverRider">
+                    <div class="lobby-buttons">
+                        <button id="createRoomBtn" class="lobby-button">Create a room</button>
+                        <button id="quickMatchBtn" class="lobby-button secondary">Quick match</button>
+                    </div>
+                    <label class="lobby-label" for="roomCodeInput">Join with room code</label>
+                    <input id="roomCodeInput" class="lobby-input" maxlength="5" autocomplete="off" placeholder="ABCDE" aria-label="Room code">
+                    <div class="lobby-buttons">
+                        <button id="joinRoomBtn" class="lobby-button secondary">Join room</button>
+                    </div>
+                </section>
+
+                <section id="roomSection" class="lobby-section hidden" aria-live="polite">
+                    <p id="roomStatus" class="lobby-copy">Waiting for players...</p>
+                    <div id="roomCodeDisplay" class="room-code" aria-label="Room code"></div>
+                    <p class="lobby-copy">Share this code with friends. Two to four players can ride together; the host can start once two are connected.</p>
+                    <div class="lobby-buttons">
+                        <button id="copyInviteBtn" class="lobby-button secondary">Copy invite link</button>
+                        <button id="startGameBtn" class="lobby-button">Start the run</button>
+                        <button id="leaveRoomBtn" class="lobby-button secondary">Leave room</button>
+                    </div>
+                </section>
+
+                <p id="lobbyStatus" class="lobby-status" role="status" aria-live="polite">Connecting to game server...</p>
+            </div>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div id="gameOverModal" class="modal-overlay hidden">
+            <div class="modal-icon">⚠️</div>
+            <h2 class="modal-title">CRASHED!</h2>
+            <p id="gameOverText" class="modal-text">Your team floated <strong id="finalScore" style="color: #fde047;">0</strong> meters down the river! <span id="crashReasonText"></span></p>
+            <button id="restartBtn" class="restart-btn">Run It Back</button>
+            <button id="returnToLobbyBtn" class="lobby-button secondary" style="margin-top: 12px;">Return to room</button>
+        </div>
+
+        <!-- Bottom Controls Overlay -->
+        <div class="bottom-ui">
+            <!-- 90-Degree Interactive Quarter Pie Arc Wheel -->
+            <div class="pie-control-wrapper">
+                <canvas id="pieCanvas" width="130" height="130"></canvas>
+            </div>
+
+            <!-- FART Action Button -->
+            <div class="fart-container">
+                <div class="voice-controls">
+                    <button id="voiceToggleBtn" class="voice-button" type="button" aria-pressed="false">VOICE OFF</button>
+                    <button id="micMuteBtn" class="voice-button" type="button" aria-pressed="false" disabled>MUTE MIC</button>
+                    <button id="deafenToggleBtn" class="voice-button" type="button" aria-pressed="false" disabled>DEAFEN</button>
+                </div>
+                <button id="btnFart" class="btn-fart">
+                    <span class="fart-label">FART!</span>
+                </button>
+                <div class="kbd-hint">[Spacebar]</div>
+                <div id="controlSectorLabel" class="control-sector-label" aria-live="polite">JOIN A ROOM TO PLAY</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Web Audio Synthesizer ---
+        class FartAudioSynth {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    try {
+                        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                        if (AudioContextClass) {
+                            this.ctx = new AudioContextClass();
+                        }
+                    } catch (e) {}
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume().catch(() => {});
+                }
+            }
+
+            playFart(power = 1.0) {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const now = this.ctx.currentTime;
+                    const duration = 0.28 + Math.random() * 0.15;
+
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+
+                    const baseFreq = 55 + Math.random() * 25;
+                    osc.frequency.setValueAtTime(baseFreq, now);
+                    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.3, now + duration);
+
+                    const lfo = this.ctx.createOscillator();
+                    const lfoGain = this.ctx.createGain();
+                    lfo.frequency.setValueAtTime(28 + Math.random() * 10, now);
+                    lfoGain.gain.setValueAtTime(30, now);
+                    lfo.connect(osc.frequency);
+                    lfo.start(now);
+                    lfo.stop(now + duration);
+
+                    gain.gain.setValueAtTime(0.01, now);
+                    gain.gain.linearRampToValueAtTime(0.4 * power, now + 0.03);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + duration);
+                } catch (err) {}
+            }
+
+            playCrash() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(130, now);
+                    osc.frequency.exponentialRampToValueAtTime(25, now + 0.35);
+
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } catch (e) {}
+            }
+        }
+
+        const audio = new FartAudioSynth();
+
+        // --- Canvas Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const miniCtx = minimapCanvas.getContext('2d');
+        const pieCanvas = document.getElementById('pieCanvas');
+        const pieCtx = pieCanvas.getContext('2d');
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            minimapCanvas.width = minimapCanvas.parentElement.clientWidth;
+            minimapCanvas.height = minimapCanvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- Game Logic State ---
+        let gameRunning = false;
+        let onlineMode = false;
+        let networkSocket = null;
+        let networkPlayerId = null;
+        let activeRoomCode = null;
+        let currentServerState = null;
+        let showFinishedRoomLobby = false;
+        let localSectorStart = -Math.PI * 0.75;
+        let localSectorSize = Math.PI / 2;
+        let voiceEnabled = false;
+        let microphoneEnabled = false;
+        let voiceDeafened = false;
+        let localVoiceStream = null;
+        const voicePeers = new Map();
+        let lastSentSteer = -1;
+        let lastSteerSentAt = 0;
+        let lastFartSentAt = 0;
+        let reconnectTimer = null;
+        let distanceMeters = 0;
+        let riverScrollOffset = 0;
+        const currentSpeed = 0.9;
+
+        const keys = { left: false, right: false };
+
+        const pieState = {
+            active: false,
+            angle: -Math.PI * 0.75,
+            normalizedVal: 0.5,
+            knobX: 45,
+            knobY: 45
+        };
+
+        const raft = {
+            x: 0,
+            y: 0,
+            radius: 40,
+            vx: 0,
+            vy: 0,
+            rotation: 0
+        };
+
+        // 4 Kawaii Crew Members
+        let crew = [
+            { id: 1, name: "Panda (You)", type: "panda", color: "#ffffff", earColor: "#1e293b", angle: Math.PI / 2, gas: 100, isAI: false, squishTimer: 0 },
+            { id: 2, name: "MilkyBear", type: "bear", color: "#f59e0b", earColor: "#b45309", angle: -Math.PI / 2, isAI: true, fartTimer: 160, squishTimer: 0 },
+            { id: 3, name: "Bunny2406", type: "bunny", color: "#f472b6", earColor: "#db2777", angle: 0, isAI: true, fartTimer: 240, squishTimer: 0 },
+            { id: 4, name: "KittyPro", type: "kitty", color: "#f8fafc", earColor: "#f43f5e", angle: Math.PI, isAI: true, fartTimer: 320, squishTimer: 0 }
+        ];
+
+        let riverWalls = [];
+        let gasBeans = [];
+        let gasParticles = [];
+        let waterRipples = [];
+
+        function getRiverWidth() {
+            return canvas.width * 0.65;
+        }
+
+        function initRipples() {
+            waterRipples = [];
+            for (let i = 0; i < 18; i++) {
+                waterRipples.push({
+                    x: (Math.random() - 0.5) * getRiverWidth(),
+                    y: Math.random() * canvas.height,
+                    radius: 5 + Math.random() * 12,
+                    speed: 0.8 + Math.random() * 0.8
+                });
+            }
+        }
+
+        function spawnObstacleWall() {
+            const riverW = getRiverWidth();
+            const minX = -riverW / 2 + 25;
+            const maxX = riverW / 2 - 25;
+            const gapWidth = raft.radius * 2.8;
+
+            const gapCenter = minX + gapWidth / 2 + Math.random() * (maxX - minX - gapWidth);
+            const isGate = Math.random() > 0.5;
+
+            const leftSegmentWidth = Math.max(0, gapCenter - (gapWidth / 2) - minX);
+            const rightSegmentWidth = Math.max(0, maxX - (gapCenter + gapWidth / 2));
+
+            const wallY = -320;
+
+            riverWalls.push({
+                y: wallY,
+                height: 28,
+                gapCenter: gapCenter,
+                gapWidth: gapWidth,
+                isGate: isGate,
+                leftSeg: { x: minX + leftSegmentWidth / 2, w: leftSegmentWidth },
+                rightSeg: { x: gapCenter + (gapWidth / 2) + rightSegmentWidth / 2, w: rightSegmentWidth }
+            });
+
+            if (Math.random() < 0.65) {
+                gasBeans.push({
+                    x: gapCenter,
+                    y: wallY - 60,
+                    radius: 12
+                });
+            }
+        }
+
+        function triggerFart(character, power = 1.0, isUser = false, fartAngle = character.angle) {
+            audio.playFart(power);
+            character.squishTimer = 25;
+
+            const seatDist = raft.radius - 2;
+            const cx = raft.x + Math.cos(character.angle) * seatDist;
+            const cy = raft.y + Math.sin(character.angle) * seatDist;
+
+            const outAngle = fartAngle;
+            const count = isUser ? 24 : 12;
+
+            for (let i = 0; i < count; i++) {
+                const spreadAngle = outAngle + (Math.random() - 0.5) * 1.0;
+                const spd = 2.5 + Math.random() * 3.5;
+                gasParticles.push({
+                    x: cx,
+                    y: cy,
+                    vx: Math.cos(spreadAngle) * spd,
+                    vy: Math.sin(spreadAngle) * spd,
+                    radius: 6 + Math.random() * 10,
+                    color: Math.random() > 0.3 ? 'rgba(163, 230, 53, ' : 'rgba(234, 179, 8, ',
+                    alpha: 0.9,
+                    decay: 0.02 + Math.random() * 0.015
+                });
+            }
+
+            if (isUser && !onlineMode) {
+                // Boost in the direction opposite to Player 1's outward bum angle
+                const boostAngle = character.angle + Math.PI;
+                raft.vx += Math.cos(boostAngle) * 2.8;
+                raft.vy += Math.sin(boostAngle) * 2.8;
+                showToast("FART BOOST!");
+            }
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.innerText = text;
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; }, 1100);
+        }
+
+        // --- Draw the player's assigned raft sector control ---
+        function drawPieControl() {
+            const cx = 65;
+            const cy = 65;
+            const outerR = 57;
+            const innerR = 17;
+            const slices = 4;
+            const startArcAngle = localSectorStart;
+            const endArcAngle = startArcAngle + localSectorSize;
+            const sliceAngle = localSectorSize / slices;
+            pieCtx.clearRect(0, 0, 130, 130);
+            pieCtx.save();
+            pieCtx.beginPath();
+            pieCtx.moveTo(cx, cy);
+            pieCtx.arc(cx, cy, outerR, startArcAngle, endArcAngle);
+            pieCtx.closePath();
+            pieCtx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+            pieCtx.fill();
+            pieCtx.strokeStyle = '#a3e635';
+            pieCtx.lineWidth = 2;
+            pieCtx.stroke();
+
+            for (let i = 0; i < slices; i++) {
+                const sAngle = startArcAngle + i * sliceAngle;
+                const eAngle = sAngle + sliceAngle;
+                const isHighlighted = pieState.angle >= sAngle && pieState.angle < eAngle;
+                pieCtx.beginPath();
+                pieCtx.moveTo(cx, cy);
+                pieCtx.arc(cx, cy, outerR, sAngle, eAngle);
+                pieCtx.closePath();
+                pieCtx.fillStyle = isHighlighted ? 'rgba(163, 230, 53, 0.5)' : 'rgba(30, 41, 59, 0.75)';
+                pieCtx.fill();
+                pieCtx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+                pieCtx.lineWidth = 1;
+                pieCtx.stroke();
+                const midA = sAngle + sliceAngle / 2;
+                const lx = cx + Math.cos(midA) * (outerR - 15);
+                const ly = cy + Math.sin(midA) * (outerR - 15);
+                pieCtx.fillStyle = '#e2e8f0';
+                pieCtx.font = 'bold 8px system-ui';
+                pieCtx.textAlign = 'center';
+                pieCtx.textBaseline = 'middle';
+                pieCtx.fillText(`${Math.round((i + 1) * localSectorSize * 180 / (Math.PI * slices))}°`, lx, ly);
+            }
+
+            pieCtx.beginPath();
+            pieCtx.moveTo(cx, cy);
+            pieCtx.lineTo(cx + Math.cos(pieState.angle) * (outerR - 2), cy + Math.sin(pieState.angle) * (outerR - 2));
+            pieCtx.strokeStyle = '#a3e635';
+            pieCtx.lineWidth = 3;
+            pieCtx.stroke();
+
+            pieCtx.beginPath();
+            pieCtx.arc(cx, cy, innerR, 0, Math.PI * 2);
+            pieCtx.fillStyle = '#0f172a';
+            pieCtx.fill();
+            pieCtx.strokeStyle = '#a3e635';
+            pieCtx.lineWidth = 2;
+            pieCtx.stroke();
+
+            const knobX = cx + Math.cos(pieState.angle) * (outerR * 0.62);
+            const knobY = cy + Math.sin(pieState.angle) * (outerR * 0.62);
+            pieCtx.beginPath();
+            pieCtx.arc(knobX, knobY, 9, 0, Math.PI * 2);
+            pieCtx.fillStyle = '#84cc16';
+            pieCtx.fill();
+            pieCtx.strokeStyle = '#ffffff';
+            pieCtx.lineWidth = 2;
+            pieCtx.stroke();
+
+            pieCtx.restore();
+        }
+
+        // --- Update Game Physics ---
+        function update() {
+            if (onlineMode) {
+                updateOnlineEffects();
+                return;
+            }
+            if (!gameRunning) return;
+
+            distanceMeters += 1;
+            document.getElementById('scoreText').innerText = distanceMeters + 'm';
+            riverScrollOffset = (riverScrollOffset + currentSpeed) % 36;
+
+            // Fuel Recovery
+            if (crew[0].gas < 100) {
+                crew[0].gas = Math.min(100, crew[0].gas + 0.25);
+            }
+            const localGasBar = document.getElementById('p1GasBar');
+            const localGasText = document.getElementById('p1GasText');
+            if (localGasBar && localGasText) {
+                localGasBar.style.width = crew[0].gas + '%';
+                localGasText.innerText = Math.floor(crew[0].gas) + '% GAS';
+            }
+
+            // Sync Keyboard Controls for 90° Pie Arc
+            if (keys.left) {
+                pieState.normalizedVal = Math.max(0, pieState.normalizedVal - 0.025);
+            }
+            if (keys.right) {
+                pieState.normalizedVal = Math.min(1, pieState.normalizedVal + 0.025);
+            }
+
+            // Update P1 Angle on Raft Rim based on 90° Pie Arc
+            // P1 angle sweeps across bottom/rear arc of raft to adjust fart push
+            const startArcAngle = -Math.PI;      // 180° West
+            const endArcAngle = -Math.PI / 2;    // 270° North
+            pieState.angle = startArcAngle + pieState.normalizedVal * (endArcAngle - startArcAngle);
+
+            // Position Player 1 (You) along the raft based on 90° Pie Arc
+            crew[0].angle = (Math.PI / 4) + (pieState.normalizedVal * (Math.PI / 2));
+
+            // Damping & Position Update
+            raft.vx *= 0.88;
+            raft.vy *= 0.88;
+
+            raft.x += raft.vx;
+            raft.y += raft.vy;
+
+            // Bank Boundaries & Spike Collisions
+            const riverW = getRiverWidth();
+            const maxBorder = (riverW / 2) - raft.radius - 18;
+            if (Math.abs(raft.x) > maxBorder) {
+                audio.playCrash();
+                gameOver();
+            }
+
+            // Vertical Boundaries
+            const maxVert = (canvas.height / 2) - 100;
+            if (raft.y < -maxVert) raft.y = -maxVert;
+            if (raft.y > maxVert) raft.y = maxVert;
+
+            // Crew AI Timers
+            crew.forEach(p => {
+                if (p.squishTimer > 0) p.squishTimer--;
+
+                if (p.isAI) {
+                    p.fartTimer--;
+                    if (p.fartTimer <= 0) {
+                        p.fartTimer = 220 + Math.random() * 240;
+                        triggerFart(p, 0.4, false);
+
+                        const statusElem = document.getElementById(`p${p.id}Status`);
+                        if (statusElem) {
+                            statusElem.innerText = "FARTED!";
+                            statusElem.style.color = "#a3e635";
+                            setTimeout(() => {
+                                statusElem.innerText = "READY";
+                                statusElem.style.color = "#34d399";
+                            }, 1200);
+                        }
+                    }
+                }
+            });
+
+            // Water Ripples
+            waterRipples.forEach(w => {
+                w.y += currentSpeed * w.speed;
+                if (w.y > canvas.height) {
+                    w.y = -20;
+                    w.x = (Math.random() - 0.5) * riverW;
+                }
+            });
+
+            // Gas Particles
+            for (let i = gasParticles.length - 1; i >= 0; i--) {
+                const p = gasParticles[i];
+                p.x += p.vx;
+                p.y += p.vy + currentSpeed * 0.3;
+                p.radius += 0.22;
+                p.alpha -= p.decay;
+                if (p.alpha <= 0) gasParticles.splice(i, 1);
+            }
+
+            // Obstacle Wall Spawning
+            if (riverWalls.length === 0 || riverWalls[riverWalls.length - 1].y > -110) {
+                spawnObstacleWall();
+            }
+
+            // Obstacle Collisions
+            for (let i = riverWalls.length - 1; i >= 0; i--) {
+                const wall = riverWalls[i];
+                wall.y += currentSpeed;
+
+                if (Math.abs(raft.y - wall.y) < raft.radius + (wall.height / 2)) {
+                    const gapLeft = wall.gapCenter - (wall.gapWidth / 2) + raft.radius * 0.6;
+                    const gapRight = wall.gapCenter + (wall.gapWidth / 2) - raft.radius * 0.6;
+
+                    if (raft.x < gapLeft || raft.x > gapRight) {
+                        audio.playCrash();
+                        gameOver();
+                    }
+                }
+
+                if (wall.y > canvas.height / 2 + 150) {
+                    riverWalls.splice(i, 1);
+                }
+            }
+
+            // Gas Beans Pickup
+            for (let i = gasBeans.length - 1; i >= 0; i--) {
+                const b = gasBeans[i];
+                b.y += currentSpeed;
+                const dist = Math.hypot(b.x - raft.x, b.y - raft.y);
+                if (dist < raft.radius + b.radius) {
+                    crew[0].gas = 100;
+                    showToast("GAS RECOVERED!");
+                    gasBeans.splice(i, 1);
+                } else if (b.y > canvas.height / 2 + 150) {
+                    gasBeans.splice(i, 1);
+                }
+            }
+        }
+
+        function updateOnlineEffects() {
+            if (!gameRunning) return;
+
+            if (keys.left) pieState.normalizedVal = Math.max(0, pieState.normalizedVal - 0.025);
+            if (keys.right) pieState.normalizedVal = Math.min(1, pieState.normalizedVal + 0.025);
+            pieState.angle = localSectorStart + pieState.normalizedVal * localSectorSize;
+            sendSteering();
+
+            const riverW = getRiverWidth();
+            waterRipples.forEach(ripple => {
+                ripple.y += currentSpeed * ripple.speed;
+                if (ripple.y > canvas.height) {
+                    ripple.y = -20;
+                    ripple.x = (Math.random() - 0.5) * riverW;
+                }
+            });
+            for (let i = gasParticles.length - 1; i >= 0; i -= 1) {
+                const particle = gasParticles[i];
+                particle.x += particle.vx;
+                particle.y += particle.vy + currentSpeed * 0.3;
+                particle.radius += 0.22;
+                particle.alpha -= particle.decay;
+                if (particle.alpha <= 0) gasParticles.splice(i, 1);
+            }
+        }
+
+        function applyServerState(state) {
+            const previousPhase = currentServerState?.phase;
+            currentServerState = state;
+            onlineMode = true;
+            gameRunning = state.phase === 'running';
+            distanceMeters = state.score;
+            riverScrollOffset = state.scrollOffset;
+            document.getElementById('scoreText').innerText = distanceMeters + 'm';
+
+            const scaleX = canvas.width / 440;
+            const scaleY = canvas.height / 920;
+            raft.x = state.raft.x * scaleX;
+            raft.y = state.raft.y * scaleY;
+            raft.vx = state.raft.vx * scaleX;
+            raft.vy = state.raft.vy * scaleY;
+            raft.radius = 40 * scaleX;
+
+            const riverW = getRiverWidth();
+            const minX = -riverW / 2 + 25;
+            const maxX = riverW / 2 - 25;
+            riverWalls = state.walls.map(wall => {
+                const gapCenter = wall.gapCenter * scaleX;
+                const gapWidth = wall.gapWidth * scaleX;
+                const leftWidth = Math.max(0, gapCenter - gapWidth / 2 - minX);
+                const rightWidth = Math.max(0, maxX - gapCenter - gapWidth / 2);
+                return {
+                    y: wall.y * scaleY,
+                    height: wall.height * scaleY,
+                    gapCenter,
+                    gapWidth,
+                    isGate: wall.isGate,
+                    leftSeg: { x: minX + leftWidth / 2, w: leftWidth },
+                    rightSeg: { x: gapCenter + gapWidth / 2 + rightWidth / 2, w: rightWidth }
+                };
+            });
+            gasBeans = state.beans.map(bean => ({
+                x: bean.x * scaleX,
+                y: bean.y * scaleY,
+                radius: bean.radius * scaleX
+            }));
+
+            const characterTypes = [
+                { type: 'panda', color: '#ffffff', earColor: '#1e293b' },
+                { type: 'bear', color: '#f59e0b', earColor: '#b45309' },
+                { type: 'bunny', color: '#f472b6', earColor: '#db2777' },
+                { type: 'kitty', color: '#f8fafc', earColor: '#f43f5e' }
+            ];
+            crew = state.players.map(player => {
+                const appearance = characterTypes[player.seat];
+                if (player.id === networkPlayerId) {
+                    localSectorStart = player.sectorStart;
+                    localSectorSize = player.sectorSize;
+                    pieState.normalizedVal = player.angle;
+                    pieState.angle = localSectorStart + pieState.normalizedVal * localSectorSize;
+                    document.getElementById('controlSectorLabel').textContent =
+                        `YOUR ${Math.round(localSectorSize * 180 / Math.PI)}° SECTOR`;
+                }
+                return {
+                    ...appearance,
+                    id: player.id,
+                    name: player.id === networkPlayerId ? `${player.name} (You)` : player.name,
+                    angle: player.seatAngle,
+                    gas: player.gas,
+                    isAI: false,
+                    squishTimer: crew.find(member => member.id === player.id)?.squishTimer || 0
+                };
+            });
+
+            renderPlayerRows(state.players);
+            renderRoomView(state);
+            syncVoicePeers(state.players);
+            if (state.phase === 'finished') {
+                if (previousPhase !== 'finished') showFinishedRoomLobby = false;
+                if (!showFinishedRoomLobby) showGameOver(state);
+            } else if (state.phase === 'running') {
+                showFinishedRoomLobby = false;
+                document.getElementById('gameOverModal').classList.add('hidden');
+                document.getElementById('lobbyModal').classList.add('hidden');
+            } else {
+                showFinishedRoomLobby = false;
+                document.getElementById('gameOverModal').classList.add('hidden');
+            }
+        }
+
+        function renderPlayerRows(players) {
+            const container = document.getElementById('playerRows');
+            container.replaceChildren();
+            players.forEach(player => {
+                const row = document.createElement('div');
+                row.className = 'player-row' + (player.connected ? '' : ' disconnected');
+                const info = document.createElement('div');
+                info.className = 'player-info';
+                const name = document.createElement('span');
+                name.style.color = player.color;
+                name.textContent = `${player.name}${player.id === networkPlayerId ? ' (You)' : ''}${player.voiceReady ? ' · 🎙' : ''}`;
+                const gasText = document.createElement('span');
+                const isLocalPlayer = player.id === networkPlayerId;
+                if (isLocalPlayer) gasText.id = 'p1GasText';
+                gasText.style.color = player.gas < 20 ? '#fb7185' : '#4ade80';
+                gasText.textContent = player.connected ? `${player.gas}%` : 'RECONNECTING';
+                info.append(name, gasText);
+
+                const bar = document.createElement('div');
+                bar.className = 'bar-bg';
+                const fill = document.createElement('div');
+                if (isLocalPlayer) fill.id = 'p1GasBar';
+                fill.className = 'bar-fill';
+                fill.style.width = player.gas + '%';
+                fill.style.background = player.color;
+                bar.append(fill);
+                row.append(info, bar);
+                container.append(row);
+            });
+        }
+
+        // --- Render Seated Character with Legs in Water & Bums Outward ---
+        function drawSeatedKawaiiCharacter(ctx, char) {
+            ctx.save();
+
+            const isSquishing = char.squishTimer > 0;
+            const seatDist = raft.radius - 2;
+
+            const posX = Math.cos(char.angle) * seatDist;
+            const posY = Math.sin(char.angle) * seatDist;
+
+            ctx.translate(posX, posY);
+            ctx.rotate(char.angle + Math.PI / 2);
+
+            // Legs Dangling into Water
+            ctx.fillStyle = char.color;
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.5;
+
+            ctx.beginPath();
+            ctx.roundRect(-7, -18, 4, 10, 2);
+            ctx.roundRect(3, -18, 4, 10, 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Water Splashes around Feet
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(-5, -18, 4, 0, Math.PI * 2);
+            ctx.arc(5, -18, 4, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Bum Outward
+            ctx.fillStyle = char.color;
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(-4, -10, 5, 0, Math.PI * 2);
+            ctx.arc(4, -10, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Ears
+            if (char.type === 'bunny') {
+                ctx.fillStyle = char.earColor;
+                ctx.beginPath();
+                ctx.ellipse(-5, 14, 3, 7, -0.2, 0, Math.PI * 2);
+                ctx.ellipse(5, 14, 3, 7, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = char.earColor;
+                ctx.beginPath();
+                ctx.arc(-8, 9, 4.5, 0, Math.PI * 2);
+                ctx.arc(8, 9, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Head / Face
+            ctx.fillStyle = char.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, 11, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+
+            if (char.type === 'panda') {
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.ellipse(-4, 2, 3, 2.5, -0.2, 0, Math.PI * 2);
+                ctx.ellipse(4, 2, 3, 2.5, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Blush
+            ctx.fillStyle = 'rgba(251, 113, 133, 0.75)';
+            ctx.beginPath();
+            ctx.arc(-6, -2, 2.8, 0, Math.PI * 2);
+            ctx.arc(6, -2, 2.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.strokeStyle = isSquishing ? '#ffffff' : (char.type === 'panda' ? '#ffffff' : '#1e293b');
+            ctx.lineWidth = 1.5;
+            ctx.lineCap = 'round';
+
+            if (isSquishing) {
+                ctx.beginPath();
+                ctx.moveTo(-6, 3); ctx.lineTo(-4, 1); ctx.lineTo(-6, -1);
+                ctx.moveTo(6, 3); ctx.lineTo(4, 1); ctx.lineTo(6, -1);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.arc(-4, 1, 2, Math.PI, 0);
+                ctx.arc(4, 1, 2, Math.PI, 0);
+                ctx.stroke();
+            }
+
+            // Mouth
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(-1.2, -3, 1.2, 0, Math.PI);
+            ctx.arc(1.2, -3, 1.2, 0, Math.PI);
+            ctx.stroke();
+
+            ctx.restore();
+
+            // Name Label
+            ctx.save();
+            ctx.translate(posX, posY);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#000000';
+            ctx.shadowBlur = 3;
+            ctx.fillText(char.name, 0, -18);
+            ctx.restore();
+        }
+
+        // --- Draw Main Game Canvas ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const riverW = getRiverWidth();
+            const bankW = (canvas.width - riverW) / 2;
+
+            // Dirt Side Banks
+            ctx.fillStyle = '#ea580c';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grass Border Lines
+            ctx.fillStyle = '#65a30d';
+            ctx.fillRect(bankW - 16, 0, 16, canvas.height);
+            ctx.fillRect(canvas.width - bankW, 0, 16, canvas.height);
+
+            // Main Blue River
+            ctx.fillStyle = '#0284c7';
+            ctx.fillRect(bankW, 0, riverW, canvas.height);
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+
+            // Water Ripples
+            ctx.strokeStyle = 'rgba(224, 242, 254, 0.35)';
+            ctx.lineWidth = 2;
+            waterRipples.forEach(w => {
+                ctx.beginPath();
+                ctx.arc(w.x, w.y - canvas.height / 2, w.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
+            // Purple Spike Walls
+            const spikeSpacing = 24;
+            ctx.fillStyle = '#a855f7';
+            ctx.fillRect(-riverW/2, -canvas.height/2, 20, canvas.height);
+            ctx.fillRect(riverW/2 - 20, -canvas.height/2, 20, canvas.height);
+
+            ctx.fillStyle = '#ffffff';
+            for (let y = -canvas.height/2 - riverScrollOffset; y < canvas.height/2 + spikeSpacing; y += spikeSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(-riverW/2 + 20, y);
+                ctx.lineTo(-riverW/2 + 32, y + 8);
+                ctx.lineTo(-riverW/2 + 20, y + 16);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(riverW/2 - 20, y);
+                ctx.lineTo(riverW/2 - 32, y + 8);
+                ctx.lineTo(riverW/2 - 20, y + 16);
+                ctx.fill();
+            }
+
+            // Gas Beans
+            gasBeans.forEach(b => {
+                ctx.save();
+                ctx.translate(b.x, b.y);
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath();
+                ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🫘', 0, 1);
+                ctx.restore();
+            });
+
+            // Obstacle Gates
+            riverWalls.forEach(wall => {
+                ctx.save();
+                ctx.translate(0, wall.y);
+
+                if (wall.isGate) {
+                    ctx.fillStyle = '#475569';
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.lineWidth = 2;
+
+                    if (wall.leftSeg.w > 0) {
+                        ctx.fillRect(wall.leftSeg.x - wall.leftSeg.w / 2, -wall.height / 2, wall.leftSeg.w, wall.height);
+                        ctx.strokeRect(wall.leftSeg.x - wall.leftSeg.w / 2, -wall.height / 2, wall.leftSeg.w, wall.height);
+                    }
+                    if (wall.rightSeg.w > 0) {
+                        ctx.fillRect(wall.rightSeg.x - wall.rightSeg.w / 2, -wall.height / 2, wall.rightSeg.w, wall.height);
+                        ctx.strokeRect(wall.rightSeg.x - wall.rightSeg.w / 2, -wall.height / 2, wall.rightSeg.w, wall.height);
+                    }
+                } else {
+                    ctx.fillStyle = '#9333ea';
+                    if (wall.leftSeg.w > 0) ctx.fillRect(wall.leftSeg.x - wall.leftSeg.w / 2, -wall.height / 2, wall.leftSeg.w, wall.height);
+                    if (wall.rightSeg.w > 0) ctx.fillRect(wall.rightSeg.x - wall.rightSeg.w / 2, -wall.height / 2, wall.rightSeg.w, wall.height);
+
+                    ctx.fillStyle = '#ffffff';
+                    for (let x = -riverW/2 + 25; x < riverW/2 - 25; x += 18) {
+                        if (x < wall.gapCenter - wall.gapWidth / 2 || x > wall.gapCenter + wall.gapWidth / 2) {
+                            ctx.beginPath();
+                            ctx.moveTo(x - 6, -wall.height / 2);
+                            ctx.lineTo(x, wall.height / 2);
+                            ctx.lineTo(x + 6, -wall.height / 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+
+                // Highlight Gap Passage Lines
+                ctx.strokeStyle = 'rgba(163, 230, 53, 0.4)';
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(wall.gapCenter - wall.gapWidth / 2, -wall.height);
+                ctx.lineTo(wall.gapCenter - wall.gapWidth / 2, wall.height);
+                ctx.moveTo(wall.gapCenter + wall.gapWidth / 2, -wall.height);
+                ctx.lineTo(wall.gapCenter + wall.gapWidth / 2, wall.height);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.restore();
+            });
+
+            // Gas Particles
+            gasParticles.forEach(p => {
+                ctx.fillStyle = p.color + p.alpha + ')';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Raft & Seated Characters
+            ctx.save();
+            ctx.translate(raft.x, raft.y);
+
+            // Raft Outer Rim
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath();
+            ctx.arc(0, 0, raft.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Inner Cushion
+            ctx.fillStyle = '#86efac';
+            ctx.beginPath();
+            ctx.arc(0, 0, raft.radius - 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            const sectorSize = (Math.PI * 2) / Math.max(crew.length, 1);
+            crew.forEach(character => {
+                const sectorStart = character.angle - sectorSize / 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arc(0, 0, raft.radius - 9, sectorStart, sectorStart + sectorSize);
+                ctx.closePath();
+                ctx.fillStyle = character.color;
+                ctx.globalAlpha = 0.22;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                ctx.strokeStyle = 'rgba(15, 23, 42, 0.8)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+
+            crew.forEach(p => {
+                drawSeatedKawaiiCharacter(ctx, p);
+            });
+
+            ctx.restore(); // End Raft
+            ctx.restore(); // End Center
+
+            drawMinimap();
+            drawPieControl();
+        }
+
+        // --- Render Radar Mini-Map ---
+        function drawMinimap() {
+            miniCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+            const scaleX = minimapCanvas.width / canvas.width;
+            const scaleY = minimapCanvas.height / canvas.height;
+
+            miniCtx.fillStyle = '#020617';
+            miniCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+            miniCtx.fillStyle = '#0284c7';
+            miniCtx.fillRect(minimapCanvas.width * 0.18, 0, minimapCanvas.width * 0.64, minimapCanvas.height);
+
+            riverWalls.forEach(wall => {
+                const my = (wall.y + canvas.height / 2) * scaleY;
+                if (my >= 0 && my <= minimapCanvas.height) {
+                    miniCtx.fillStyle = '#f43f5e';
+                    miniCtx.fillRect(minimapCanvas.width * 0.18, my - 1.5, minimapCanvas.width * 0.64, 3);
+
+                    const gx = (wall.gapCenter + canvas.width / 2) * scaleX;
+                    const gw = wall.gapWidth * scaleX;
+                    miniCtx.fillStyle = '#22c55e';
+                    miniCtx.fillRect(gx - gw / 2, my - 2, gw, 4);
+                }
+            });
+
+            const rx = (raft.x + canvas.width / 2) * scaleX;
+            const ry = (raft.y + canvas.height / 2) * scaleY;
+            miniCtx.fillStyle = '#a3e635';
+            miniCtx.beginPath();
+            miniCtx.arc(rx, ry, 3.5, 0, Math.PI * 2);
+            miniCtx.fill();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').innerText = distanceMeters;
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
+
+        function restartGame() {
+            if (onlineMode) {
+                sendNetworkMessage({ type: 'restartGame' });
+                return;
+            }
+            raft.x = 0;
+            raft.y = 0;
+            raft.vx = 0;
+            raft.vy = 0;
+            distanceMeters = 0;
+            crew[0].gas = 100;
+
+            riverWalls = [];
+            gasBeans = [];
+            gasParticles = [];
+
+            document.getElementById('gameOverModal').classList.add('hidden');
+            gameRunning = true;
+        }
+
+        function performFartAction() {
+            if (!gameRunning) return;
+            if (onlineMode) {
+                const now = Date.now();
+                const player = crew.find(member => member.id === networkPlayerId);
+                if (!player || player.gas < 20) {
+                    showToast("OUT OF GAS!");
+                    return;
+                }
+                if (now - lastFartSentAt < 300) return;
+                lastFartSentAt = now;
+                sendSteering(true);
+                const fartAngle = localSectorStart + pieState.normalizedVal * localSectorSize;
+                triggerFart(player, 1.0, false, fartAngle);
+                sendNetworkMessage({ type: 'fart' });
+            } else if (crew[0].gas >= 20) {
+                crew[0].gas -= 20;
+                triggerFart(crew[0], 1.0, true);
+            } else {
+                showToast("OUT OF GAS!");
+            }
+        }
+
+        // --- Interactive control limited to the player's assigned sector ---
+        function setupPieControl() {
+            const updatePiePointer = (clientX, clientY) => {
+                if (!gameRunning) return;
+                const rect = pieCanvas.getBoundingClientRect();
+                const scaleX = 130 / rect.width;
+                const scaleY = 130 / rect.height;
+                const touchX = (clientX - rect.left) * scaleX;
+                const touchY = (clientY - rect.top) * scaleY;
+                const angle = Math.atan2(touchY - 65, touchX - 65);
+                const center = localSectorStart + localSectorSize / 2;
+                const offset = Math.atan2(Math.sin(angle - center), Math.cos(angle - center));
+                const clampedAngle = center + Math.max(-localSectorSize / 2, Math.min(localSectorSize / 2, offset));
+                pieState.active = true;
+                pieState.angle = clampedAngle;
+                pieState.normalizedVal = Math.max(0, Math.min(1, (clampedAngle - localSectorStart) / localSectorSize));
+                sendSteering(true);
+            };
+
+            const endPiePointer = () => {
+                pieState.active = false;
+            };
+
+            pieCanvas.addEventListener('pointerdown', event => {
+                event.preventDefault();
+                audio.init();
+                pieCanvas.setPointerCapture(event.pointerId);
+                updatePiePointer(event.clientX, event.clientY);
+            });
+            pieCanvas.addEventListener('pointermove', event => {
+                if (event.buttons || event.pressure > 0) updatePiePointer(event.clientX, event.clientY);
+            });
+            pieCanvas.addEventListener('pointerup', endPiePointer);
+            pieCanvas.addEventListener('pointercancel', endPiePointer);
+        }
+
+        function setLobbyStatus(text) {
+            document.getElementById('lobbyStatus').textContent = text;
+        }
+
+        function setConnectionStatus(text) {
+            document.getElementById('connectionBadge').textContent = text;
+        }
+
+        function readStoredValue(key) {
+            try {
+                return localStorage.getItem(key) || '';
+            } catch {
+                setLobbyStatus('Browser storage is unavailable; reconnecting after a refresh may not work.');
+                return '';
+            }
+        }
+
+        function saveStoredValue(key, value) {
+            try {
+                if (value) localStorage.setItem(key, value);
+                else localStorage.removeItem(key);
+            } catch {
+                setLobbyStatus('Browser storage is unavailable; reconnecting after a refresh may not work.');
+            }
+        }
+
+        function readResumeToken() {
+            try {
+                return sessionStorage.getItem('ft-resume-token') || '';
+            } catch {
+                setLobbyStatus('Browser storage is unavailable; reconnecting after a refresh may not work.');
+                return '';
+            }
+        }
+
+        function saveResumeToken(value) {
+            try {
+                if (value) sessionStorage.setItem('ft-resume-token', value);
+                else sessionStorage.removeItem('ft-resume-token');
+            } catch {
+                setLobbyStatus('Browser storage is unavailable; reconnecting after a refresh may not work.');
+            }
+        }
+
+        function getPlayerName() {
+            const name = document.getElementById('playerNameInput').value
+                .replace(/[\u0000-\u001f\u007f<>]/g, '')
+                .trim()
+                .slice(0, 16);
+            if (name.length < 2) {
+                setLobbyStatus('Your name must have at least 2 characters.');
+                return null;
+            }
+            saveStoredValue('ft-player-name', name);
+            if (networkPlayerId && !activeRoomCode) sendNetworkMessage({ type: 'rename', name });
+            return name;
+        }
+
+        function sendNetworkMessage(message) {
+            if (!networkSocket || networkSocket.readyState !== WebSocket.OPEN) {
+                setLobbyStatus('Not connected to the game server. Reconnecting...');
+                return false;
+            }
+            networkSocket.send(JSON.stringify(message));
+            return true;
+        }
+
+        function sendSteering(force = false) {
+            if (!gameRunning || !networkPlayerId) return;
+            const now = Date.now();
+            const angle = pieState.normalizedVal;
+            if (!force && (Math.abs(angle - lastSentSteer) < 0.004 || now - lastSteerSentAt < 50)) return;
+            if (sendNetworkMessage({ type: 'steer', angle })) {
+                lastSentSteer = angle;
+                lastSteerSentAt = now;
+            }
+        }
+
+        function updateVoiceButtons() {
+            const joinButton = document.getElementById('voiceToggleBtn');
+            const muteButton = document.getElementById('micMuteBtn');
+            const deafenButton = document.getElementById('deafenToggleBtn');
+            joinButton.disabled = !activeRoomCode;
+            joinButton.textContent = voiceEnabled ? 'LEAVE VOICE' : 'JOIN VOICE';
+            joinButton.classList.toggle('active', voiceEnabled);
+            joinButton.setAttribute('aria-pressed', String(voiceEnabled));
+            muteButton.disabled = !voiceEnabled;
+            muteButton.textContent = microphoneEnabled ? 'MUTE MIC' : 'UNMUTE MIC';
+            muteButton.classList.toggle('active', microphoneEnabled);
+            muteButton.setAttribute('aria-pressed', String(microphoneEnabled));
+            deafenButton.disabled = !voiceEnabled;
+            deafenButton.textContent = voiceDeafened ? 'UNDEAFEN' : 'DEAFEN';
+            deafenButton.classList.toggle('active', voiceDeafened);
+            deafenButton.setAttribute('aria-pressed', String(voiceDeafened));
+        }
+
+        function setVoiceStatus(message) {
+            setLobbyStatus(message);
+            document.getElementById('connectionBadge').textContent = message;
+        }
+
+        function closeVoicePeer(peerId, peer) {
+            peer.connection.ontrack = null;
+            peer.connection.onicecandidate = null;
+            peer.connection.onconnectionstatechange = null;
+            peer.connection.close();
+            peer.audio.remove();
+            voicePeers.delete(peerId);
+        }
+
+        function closeAllVoicePeers() {
+            for (const [peerId, peer] of voicePeers) closeVoicePeer(peerId, peer);
+        }
+
+        function sendVoiceSignal(peerId, signal) {
+            if (!sendNetworkMessage({ type: 'rtcSignal', to: peerId, signal })) {
+                setVoiceStatus('Voice signaling disconnected. Rejoin voice after reconnecting.');
+            }
+        }
+
+        function serializeDescription(description) {
+            return { type: description.type, sdp: description.sdp };
+        }
+
+        function serializeCandidate(candidate) {
+            return typeof candidate.toJSON === 'function' ? candidate.toJSON() : {
+                candidate: candidate.candidate,
+                sdpMid: candidate.sdpMid,
+                sdpMLineIndex: candidate.sdpMLineIndex,
+                usernameFragment: candidate.usernameFragment
+            };
+        }
+
+        function createVoiceOffer(peerId, peer) {
+            if (peer.connection.signalingState !== 'stable' || peer.offerStarted) return;
+            peer.offerStarted = true;
+            peer.connection.createOffer()
+                .then(offer => peer.connection.setLocalDescription(offer))
+                .then(() => sendVoiceSignal(peerId, { type: 'offer', description: serializeDescription(peer.connection.localDescription) }))
+                .catch(error => setVoiceStatus(`Could not start voice with a player: ${error.message}`));
+        }
+
+        function ensureVoicePeer(peerId) {
+            if (voicePeers.has(peerId)) return voicePeers.get(peerId);
+            if (!voiceEnabled || typeof RTCPeerConnection === 'undefined') {
+                setVoiceStatus('This browser does not support WebRTC voice chat.');
+                return null;
+            }
+            const connection = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            const audio = document.createElement('audio');
+            audio.className = 'remote-audio';
+            audio.autoplay = true;
+            audio.playsInline = true;
+            document.body.append(audio);
+            const peer = { connection, audio, pendingCandidates: [], offerStarted: false };
+            voicePeers.set(peerId, peer);
+            localVoiceStream.getTracks().forEach(track => connection.addTrack(track, localVoiceStream));
+            connection.onicecandidate = event => {
+                if (event.candidate) sendVoiceSignal(peerId, { type: 'candidate', candidate: serializeCandidate(event.candidate) });
+            };
+            connection.ontrack = event => {
+                if (event.streams[0]) {
+                    audio.srcObject = event.streams[0];
+                    audio.muted = voiceDeafened;
+                    audio.play().catch(error => {
+                        setVoiceStatus(`Tap the page to allow voice playback: ${error.message}`);
+                    });
+                }
+            };
+            connection.onconnectionstatechange = () => {
+                if (connection.connectionState === 'failed') {
+                    setVoiceStatus('Voice connection failed. Check network permissions or try again.');
+                }
+            };
+            if (networkPlayerId.localeCompare(peerId) < 0) createVoiceOffer(peerId, peer);
+            return peer;
+        }
+
+        function syncVoicePeers(players) {
+            if (!voiceEnabled || !activeRoomCode) return;
+            const desiredPeers = new Set(
+                players.filter(player => player.id !== networkPlayerId && player.connected && player.voiceReady)
+                    .map(player => player.id)
+            );
+            for (const [peerId, peer] of voicePeers) {
+                if (!desiredPeers.has(peerId)) closeVoicePeer(peerId, peer);
+            }
+            for (const peerId of desiredPeers) ensureVoicePeer(peerId);
+            if (desiredPeers.size === 0) setVoiceStatus('Voice is on. Waiting for teammates to join voice.');
+            else updateVoiceButtons();
+        }
+
+        async function toggleVoice() {
+            if (voiceEnabled) {
+                endVoiceSession();
+                setVoiceStatus('You left voice chat.');
+                return;
+            }
+            if (!activeRoomCode) {
+                setVoiceStatus('Join a room before starting voice chat.');
+                return;
+            }
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setVoiceStatus('Microphone access requires HTTPS (or localhost) and a supported browser.');
+                return;
+            }
+            try {
+                localVoiceStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+                    video: false
+                });
+                voiceEnabled = true;
+                microphoneEnabled = true;
+                voiceDeafened = false;
+                if (!sendNetworkMessage({ type: 'voiceReady', enabled: true })) {
+                    voiceEnabled = false;
+                    microphoneEnabled = false;
+                    localVoiceStream.getTracks().forEach(track => track.stop());
+                    localVoiceStream = null;
+                    updateVoiceButtons();
+                    return;
+                }
+                updateVoiceButtons();
+                setVoiceStatus('Voice is on. Your microphone is live; use MUTE MIC any time.');
+                if (currentServerState) syncVoicePeers(currentServerState.players);
+            } catch (error) {
+                const reason = error.name === 'NotAllowedError' ? 'Microphone permission was denied.' :
+                    error.name === 'NotFoundError' ? 'No microphone was found.' : `Could not start voice: ${error.message}`;
+                setVoiceStatus(reason);
+            }
+        }
+
+        function toggleMicrophone() {
+            if (!voiceEnabled || !localVoiceStream) return;
+            microphoneEnabled = !microphoneEnabled;
+            localVoiceStream.getAudioTracks().forEach(track => { track.enabled = microphoneEnabled; });
+            updateVoiceButtons();
+            setVoiceStatus(microphoneEnabled ? 'Microphone is live.' : 'Microphone muted.');
+        }
+
+        function toggleDeafen() {
+            if (!voiceEnabled) return;
+            voiceDeafened = !voiceDeafened;
+            for (const peer of voicePeers.values()) peer.audio.muted = voiceDeafened;
+            updateVoiceButtons();
+            setVoiceStatus(voiceDeafened ? 'Teammate voice is muted on this device.' : 'Teammate voice is audible.');
+        }
+
+        function endVoiceSession(notifyServer = true) {
+            if (notifyServer && voiceEnabled) sendNetworkMessage({ type: 'voiceReady', enabled: false });
+            voiceEnabled = false;
+            microphoneEnabled = false;
+            voiceDeafened = false;
+            closeAllVoicePeers();
+            if (localVoiceStream) localVoiceStream.getTracks().forEach(track => track.stop());
+            localVoiceStream = null;
+            updateVoiceButtons();
+        }
+
+        async function handleVoiceSignal(message) {
+            if (!voiceEnabled) return;
+            const peer = ensureVoicePeer(message.from);
+            if (!peer) return;
+            const connection = peer.connection;
+            try {
+                if (message.signal.type === 'offer') {
+                    await connection.setRemoteDescription(message.signal.description);
+                    for (const candidate of peer.pendingCandidates.splice(0)) {
+                        await connection.addIceCandidate(candidate);
+                    }
+                    const answer = await connection.createAnswer();
+                    await connection.setLocalDescription(answer);
+                    sendVoiceSignal(message.from, { type: 'answer', description: serializeDescription(connection.localDescription) });
+                } else if (message.signal.type === 'answer') {
+                    await connection.setRemoteDescription(message.signal.description);
+                    for (const candidate of peer.pendingCandidates.splice(0)) {
+                        await connection.addIceCandidate(candidate);
+                    }
+                } else if (message.signal.type === 'candidate') {
+                    if (connection.remoteDescription) await connection.addIceCandidate(message.signal.candidate);
+                    else peer.pendingCandidates.push(message.signal.candidate);
+                }
+            } catch (error) {
+                setVoiceStatus(`Voice setup failed: ${error.message}`);
+            }
+        }
+
+        function renderRoomView(state) {
+            const lobby = document.getElementById('lobbyModal');
+            const home = document.getElementById('homeSection');
+            const roomSection = document.getElementById('roomSection');
+            if (!activeRoomCode) {
+                home.classList.remove('hidden');
+                roomSection.classList.add('hidden');
+                lobby.classList.remove('hidden');
+                setConnectionStatus(networkSocket && networkSocket.readyState === WebSocket.OPEN ? 'Connected' : 'Connecting...');
+                updateVoiceButtons();
+                return;
+            }
+
+            home.classList.add('hidden');
+            roomSection.classList.remove('hidden');
+            document.getElementById('roomCodeDisplay').textContent = activeRoomCode;
+            const connectedCount = state.players.filter(player => player.connected).length;
+            const isHost = state.hostId === networkPlayerId;
+            document.getElementById('roomStatus').textContent =
+                `${connectedCount}/4 players ${state.phase === 'waiting' ? 'in the lobby' : state.phase === 'finished' ? 'finished the run' : 'on the raft'}.`;
+            const startButton = document.getElementById('startGameBtn');
+            startButton.textContent = state.phase === 'finished' ? 'Run it back' : 'Start the run';
+            const canStart = state.players.filter(player => player.connected).length >= 2;
+            startButton.disabled = !isHost || !canStart || state.phase === 'running';
+            startButton.title = !isHost ? 'Only the room host can start or restart.' :
+                !canStart ? 'At least two players must be connected.' : '';
+            const showLobby = state.phase === 'waiting' || (state.phase === 'finished' && showFinishedRoomLobby);
+            lobby.classList.toggle('hidden', !showLobby);
+            setConnectionStatus(`${activeRoomCode} · ${connectedCount}/4 aboard`);
+            updateVoiceButtons();
+        }
+
+        function showGameOver(state) {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = state.score;
+            document.getElementById('crashReasonText').textContent = state.crashReason || 'The run is over.';
+            document.getElementById('gameOverModal').classList.remove('hidden');
+            const localPlayer = state.players.find(player => player.id === networkPlayerId);
+            const isHost = localPlayer && localPlayer.isHost;
+            const restartButton = document.getElementById('restartBtn');
+            restartButton.disabled = !isHost;
+            restartButton.textContent = isHost ? 'Run It Back' : 'Waiting for host';
+        }
+
+        async function copyInviteLink() {
+            if (!activeRoomCode) return;
+            const inviteUrl = new URL(window.location.href);
+            inviteUrl.searchParams.set('room', activeRoomCode);
+            try {
+                await navigator.clipboard.writeText(inviteUrl.href);
+                setLobbyStatus('Invite link copied. Send it to your friends!');
+            } catch {
+                setLobbyStatus(`Share this room code with friends: ${activeRoomCode}`);
+            }
+        }
+
+        function handleNetworkMessage(message) {
+            if (message.type === 'welcome') {
+                onlineMode = true;
+                networkPlayerId = message.playerId;
+                if (activeRoomCode) {
+                    endVoiceSession(false);
+                    activeRoomCode = null;
+                    currentServerState = null;
+                    crew = [];
+                    renderRoomView({ players: [], phase: 'waiting' });
+                }
+                saveResumeToken('');
+                setConnectionStatus('Connected');
+                setLobbyStatus('Connected! Create a room or join a quick match.');
+                const nameInput = document.getElementById('playerNameInput');
+                nameInput.value = message.name;
+                const roomCode = new URL(window.location.href).searchParams.get('room');
+                if (roomCode) {
+                    document.getElementById('roomCodeInput').value = roomCode.toUpperCase();
+                    sendNetworkMessage({ type: 'joinRoom', code: roomCode });
+                }
+                return;
+            }
+            if (message.type === 'roomJoined') {
+                networkPlayerId = message.playerId;
+                activeRoomCode = message.state.code;
+                saveResumeToken(message.resumeToken);
+                if (message.resumed) setLobbyStatus('Rejoined your room.');
+                else setLobbyStatus('Room ready. Invite friends with the code or link.');
+                applyServerState(message.state);
+                return;
+            }
+            if (message.type === 'leftRoom') {
+                endVoiceSession(false);
+                activeRoomCode = null;
+                currentServerState = null;
+                gameRunning = false;
+                riverWalls = [];
+                gasBeans = [];
+                crew = [];
+                saveResumeToken('');
+                document.getElementById('gameOverModal').classList.add('hidden');
+                renderRoomView({ players: [], phase: 'waiting' });
+                setLobbyStatus('You left the room. Create or join another game.');
+                return;
+            }
+            if (message.type === 'state') {
+                if (!activeRoomCode || message.state.code !== activeRoomCode) return;
+                applyServerState(message.state);
+                return;
+            }
+            if (message.type === 'rtcSignal') {
+                handleVoiceSignal(message);
+                return;
+            }
+            if (message.type === 'fart') {
+                const player = crew.find(member => member.id === message.playerId);
+                if (player) triggerFart(player, message.power, false, message.angle);
+                return;
+            }
+            if (message.type === 'gasPickup') {
+                showToast('GAS RECOVERED!');
+                return;
+            }
+            if (message.type === 'error') {
+                setLobbyStatus(message.message);
+                showToast(message.message);
+                return;
+            }
+            if (message.type === 'fartRejected') showToast('OUT OF GAS!');
+        }
+
+        function connectToServer() {
+            let socketUrl;
+            try {
+                socketUrl = getGameSocketUrl();
+            } catch (error) {
+                setConnectionStatus('Server configuration error');
+                setLobbyStatus(error.message);
+                return;
+            }
+            if (!socketUrl) {
+                setConnectionStatus('Server not configured');
+                setLobbyStatus('Set GAME_SERVER_URL in your Netlify site build settings, then redeploy.');
+                return;
+            }
+            setConnectionStatus('Connecting...');
+            networkSocket = new WebSocket(socketUrl);
+            networkSocket.addEventListener('open', () => {
+                const name = getPlayerName() || 'RiverRider';
+                const inviteCode = new URL(window.location.href).searchParams.get('room');
+                networkSocket.send(JSON.stringify({
+                    type: 'hello',
+                    name,
+                    resumeToken: inviteCode ? '' : readResumeToken()
+                }));
+            });
+            networkSocket.addEventListener('message', event => {
+                try {
+                    handleNetworkMessage(JSON.parse(event.data));
+                } catch {
+                    setLobbyStatus('Received an invalid message from the game server.');
+                }
+            });
+            networkSocket.addEventListener('close', () => {
+                onlineMode = true;
+                gameRunning = false;
+                endVoiceSession(false);
+                setConnectionStatus('Disconnected · reconnecting...');
+                setLobbyStatus('Connection lost. Trying to rejoin...');
+                if (reconnectTimer) clearTimeout(reconnectTimer);
+                reconnectTimer = setTimeout(connectToServer, 3000);
+            });
+            networkSocket.addEventListener('error', () => {
+                setConnectionStatus('Game server unavailable');
+                setLobbyStatus('Could not reach the game server. Check its status and Netlify ALLOWED_ORIGINS settings.');
+            });
+        }
+
+        function getGameSocketUrl() {
+            const configuredUrl = typeof window.GAME_SERVER_URL === 'string' ? window.GAME_SERVER_URL.trim() : '';
+            if (!configuredUrl) {
+                const localHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+                if (!localHost) return null;
+                return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+            }
+
+            let serverUrl;
+            try {
+                serverUrl = new URL(configuredUrl);
+            } catch {
+                throw new Error('GAME_SERVER_URL must be a valid https:// or wss:// server URL.');
+            }
+            if (serverUrl.protocol === 'https:') serverUrl.protocol = 'wss:';
+            else if (serverUrl.protocol === 'http:') serverUrl.protocol = 'ws:';
+            else if (serverUrl.protocol !== 'wss:' && serverUrl.protocol !== 'ws:') {
+                throw new Error('GAME_SERVER_URL must use https:// or wss://.');
+            }
+            if (serverUrl.pathname === '/' || serverUrl.pathname === '') serverUrl.pathname = '/ws';
+            if (serverUrl.pathname !== '/ws') {
+                throw new Error('GAME_SERVER_URL should be the game server origin, without a path.');
+            }
+            serverUrl.search = '';
+            serverUrl.hash = '';
+            return serverUrl.href;
+        }
+
+        function setupControls() {
+            setupPieControl();
+
+            const fartBtn = document.getElementById('btnFart');
+            const fartHandler = (e) => {
+                e.preventDefault();
+                audio.init();
+                performFartAction();
+            };
+            fartBtn.addEventListener('click', fartHandler);
+
+            window.addEventListener('keydown', (e) => {
+                if (
+                    e.target instanceof HTMLInputElement ||
+                    e.target instanceof HTMLTextAreaElement ||
+                    e.target instanceof HTMLButtonElement ||
+                    !gameRunning
+                ) return;
+                audio.init();
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+                if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+                    e.preventDefault();
+                    if (!e.repeat) performFartAction();
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+            });
+
+            document.getElementById('soundToggle').addEventListener('click', () => {
+                audio.muted = !audio.muted;
+                document.getElementById('soundToggle').innerText = audio.muted ? '🔇' : '🔊';
+            });
+
+            document.getElementById('restartBtn').addEventListener('click', restartGame);
+            document.getElementById('returnToLobbyBtn').addEventListener('click', () => {
+                document.getElementById('gameOverModal').classList.add('hidden');
+                if (currentServerState) {
+                    showFinishedRoomLobby = true;
+                    renderRoomView(currentServerState);
+                }
+            });
+            document.getElementById('createRoomBtn').addEventListener('click', () => {
+                if (getPlayerName()) sendNetworkMessage({ type: 'createRoom' });
+            });
+            document.getElementById('quickMatchBtn').addEventListener('click', () => {
+                if (getPlayerName()) sendNetworkMessage({ type: 'quickMatch' });
+            });
+            document.getElementById('joinRoomBtn').addEventListener('click', () => {
+                const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+                if (!getPlayerName()) return;
+                if (!/^[A-HJ-NP-Z2-9]{5}$/.test(code)) {
+                    setLobbyStatus('Enter a valid 5-character room code.');
+                    return;
+                }
+                sendNetworkMessage({ type: 'joinRoom', code });
+            });
+            document.getElementById('roomCodeInput').addEventListener('input', event => {
+                event.target.value = event.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 5);
+            });
+            document.getElementById('startGameBtn').addEventListener('click', () => {
+                sendNetworkMessage({ type: currentServerState?.phase === 'finished' ? 'restartGame' : 'startGame' });
+            });
+            document.getElementById('leaveRoomBtn').addEventListener('click', () => {
+                endVoiceSession();
+                sendNetworkMessage({ type: 'leaveRoom' });
+            });
+            document.getElementById('copyInviteBtn').addEventListener('click', copyInviteLink);
+            document.getElementById('voiceToggleBtn').addEventListener('click', toggleVoice);
+            document.getElementById('micMuteBtn').addEventListener('click', toggleMicrophone);
+            document.getElementById('deafenToggleBtn').addEventListener('click', toggleDeafen);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function() {
+            resizeCanvas();
+            initRipples();
+            setupControls();
+            const savedName = readStoredValue('ft-player-name');
+            if (savedName) document.getElementById('playerNameInput').value = savedName;
+            gameLoop();
+            connectToServer();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "fart-together",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A cooperative browser multiplayer river game",
+  "scripts": {
+    "start": "node server.js",
+    "build:netlify": "node scripts/build-netlify.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.3"
+  }
+}
